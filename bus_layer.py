@@ -53,5 +53,8 @@ def get_points_of_interest(location, n):
 
     return points_of_int
 
+def git_test():
+
+    return
 
 
