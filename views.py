@@ -1,4 +1,7 @@
-from flask import Flask
+from flask import Flask, request
+import bus_layer as bl
+from models import Node
+
 app = Flask(__name__)
 
 
@@ -8,6 +11,9 @@ def hello_world():
 
 @app.route('/fbr')
 def flower_bed_route():
+
+    bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['lat'], request.args['long'], ''))
+
     return 'Flower bed route'
 
 @app.route('/point_route')

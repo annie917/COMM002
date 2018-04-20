@@ -1,9 +1,20 @@
+import data_access as db
+
 def get_flower_bed_route(plant, location):
     # Arguments:
     # plant - the plant name number of the desired plant
     # location - the location of the user
     # Returns - a list of Node objects representing the shortest route between the user and the plant
     # Returns - a Node object representing the centre of the closest flower bed
+
+    # Get closest node to user
+    user_node = db.find_nearest_node(location)
+
+    # Get closest flower bed containing plant
+    bed_node, bed_centre = db.find_nearest_plant_bed(plant, location)
+
+    # Get route between user and flower bed
+    route = get_route(user_node, bed_node)
 
     return route, bed_centre
 
@@ -19,13 +30,23 @@ def get_poi_route(point_of_int, location):
 
 def get_route(node1, node2):
 
+    import networkx as nx
+
     # Arguments:
     # node1 - a Node object
     # node2 - a Node object
     # Returns - a list of Node objects representing the shortest route between node1 and node2
 
+    G = db.get_graph()
 
-    return route
+    route = nx.astar_path(G, node1, node2)
+
+    route_obj = []
+
+    for node in route:
+        route_obj.append(db.get_node_details(node))
+
+    return route_obj
 
 
 def get_plant_name_num(common_name):
@@ -52,13 +73,4 @@ def get_points_of_interest(location, n):
     # Returns - a list of n PointOfInterest objects, sorted by distance from location
 
     return points_of_int
-
-def git_test():
-
-    return
-
-def git_test2():
-
-    return
-
 

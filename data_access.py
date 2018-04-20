@@ -49,6 +49,15 @@ def get_plant_attributes(plant_name_num):
 
     return plant
 
+def get_node_details(node_id):
+
+    # Arguments:
+    # node_id - a node id
+    # Returns - a Node object populated with full node details
+
+
+    return node
+
 def db_connect():
 
     # Arguments - None
