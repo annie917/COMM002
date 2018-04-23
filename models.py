@@ -26,12 +26,15 @@ class Plant(object):
 
 class Node(object):
 
-    def __init__(self, id, lat, long, name):
+    # Represents a row in the node table.  Lat and long are stored as a POINT in db, but must be retrieved as strings
+    # As the client will ultimately want them as strings, they are stored here as strings
 
-        self.id = id
-        self.lat = lat
-        self.long = long
-        self.name = name
+    def __init__(self, id, long, lat, name):
+
+        self.id = id # int
+        self.long = long # string
+        self.lat = lat # string
+        self.name = name # string
 
 
 class PointOfInterest(Node):

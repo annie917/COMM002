@@ -7,14 +7,20 @@ def get_flower_bed_route(plant, location):
     # Returns - a list of Node objects representing the shortest route between the user and the plant
     # Returns - a Node object representing the centre of the closest flower bed
 
+    # Get a new database connection
+    cnx = db.db_connect()
+
     # Get closest node to user
-    user_node = db.find_nearest_node(location)
+    user_node = db.find_nearest_node(cnx, location)
 
     # Get closest flower bed containing plant
-    bed_node, bed_centre = db.find_nearest_plant_bed(plant, location)
+    bed_node, bed_centre = db.find_nearest_plant_bed(cnx, plant, location)
 
     # Get route between user and flower bed
-    route = get_route(user_node, bed_node)
+    route = get_route(cnx, user_node, bed_node)
+
+    # Close database connection
+    db.db_close(cnx)
 
     return route, bed_centre
 
@@ -28,23 +34,24 @@ def get_poi_route(point_of_int, location):
     return route
 
 
-def get_route(node1, node2):
+def get_route(cnx, node1, node2):
 
     import networkx as nx
 
     # Arguments:
+    # cnx - database connection object
     # node1 - a Node object
     # node2 - a Node object
     # Returns - a list of Node objects representing the shortest route between node1 and node2
 
-    G = db.get_graph()
+    G = db.get_graph(cnx)
 
     route = nx.astar_path(G, node1, node2)
 
     route_obj = []
 
     for node in route:
-        route_obj.append(db.get_node_details(node))
+        route_obj.append(db.get_node_details(cnx, node))
 
     return route_obj
 

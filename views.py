@@ -12,7 +12,9 @@ def hello_world():
 @app.route('/fbr')
 def flower_bed_route():
 
-    bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['lat'], request.args['long'], ''))
+    # bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['lat'], request.args['long'], ''))
+
+    bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
 
     return 'Flower bed route'
 
