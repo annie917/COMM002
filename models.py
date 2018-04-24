@@ -52,11 +52,4 @@ class Route(object):
 
         self.length = 0.0
         self.nodes = []
-
-
-class FlowerBedRoute(Route):
-
-    def __init__(self):
-
-        Route.__init__(self)
-        self.flower_bed_centre = Node(0, '0.0', '0.0', '')
+        self.destination = Node(0, '0.0', '0.0', '')

@@ -1,7 +1,7 @@
 import mysql.connector
 from  mysql.connector import errorcode
 from models import Node
-from models import FlowerBedRoute
+from models import Route
 
 def find_nearest_node(cnx, location):
 
@@ -56,13 +56,34 @@ def find_nearest_plant_bed(cnx, plant, location):
 
     cursor.close()
 
-    flower_bed_route = FlowerBedRoute()
+    nearest_node = get_node_details(cnx, row[2])
+
+    bed_centre = get_bed_centre(cnx, row[0])
+
+    return bed_centre, nearest_node
+
+
+def find_nearest_poi_node(cnx, poi_id):
+
+    cursor = cnx.cursor()
+
+
+    sql = 'SELECT name, ST_AsText(coordinates), nearest_node ' \
+          'FROM point_of_interest ' \
+          'WHERE id =' + str(poi_id) + ';'
+
+    cursor.execute(sql)
+
+    row = cursor.fetchone()
+
+    cursor.close()
 
     nearest_node = get_node_details(cnx, row[2])
 
-    flower_bed_route.flower_bed_centre = get_bed_centre(cnx, row[0])
+    poi_node = point_to_node(row[1])
+    poi_node.name = row[0]
 
-    return flower_bed_route, nearest_node
+    return poi_node, nearest_node
 
 
 def get_graph(cnx):

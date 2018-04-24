@@ -16,15 +16,16 @@ def get_flower_bed_route(plant, location):
     user_node = db.find_nearest_node(cnx, location)
 
     # Get closest flower bed containing plant
-    flower_bed_route, nearest_node = db.find_nearest_plant_bed(cnx, plant, location)
+    bed_centre, nearest_node = db.find_nearest_plant_bed(cnx, plant, location)
 
     # Get route between user and flower bed
-    flower_bed_route.nodes = get_route(cnx, user_node, nearest_node)
+    route = get_route(cnx, user_node, nearest_node)
+    route.destination = bed_centre
 
     # Close database connection
     db.db_close(cnx)
 
-    return flower_bed_route
+    return route
 
 
 def get_poi_route(point_of_int, location):
@@ -32,6 +33,22 @@ def get_poi_route(point_of_int, location):
     # point_of_int - the id of the desired point of interest
     # location - node object representing users location
     # Returns - a list of Node objects representing the shortest route between location and POI
+    # Get a new database connection
+
+    cnx = db.db_connect()
+
+    # Get closest node to user
+    user_node = db.find_nearest_node(cnx, location)
+
+    # Get closest node to POI
+    poi_node, nearest_node = db.find_nearest_poi_node(cnx, point_of_int)
+
+    # Get route between user and POI
+    route = get_route(cnx, user_node, nearest_node)
+    route.destination = poi_node
+
+    # Close database connection
+    db.db_close(cnx)
 
     return route
 

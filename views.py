@@ -17,11 +17,13 @@ def flower_bed_route():
 
     f_bed_route = bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
 
-
     return 'Flower bed route'
 
 @app.route('/point_route')
 def poi_route():
+
+    route = bl.get_poi_route(2, Node(0, '-0.8570765', '51.2914787', ''))
+
     return 'Point of interest route'
 
 @app.route('/pnn')
