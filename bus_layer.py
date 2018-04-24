@@ -1,4 +1,5 @@
 import data_access as db
+from models import Route
 
 def get_flower_bed_route(plant, location):
     # Arguments:
@@ -8,21 +9,22 @@ def get_flower_bed_route(plant, location):
     # Returns - a Node object representing the centre of the closest flower bed
 
     # Get a new database connection
+
     cnx = db.db_connect()
 
     # Get closest node to user
     user_node = db.find_nearest_node(cnx, location)
 
     # Get closest flower bed containing plant
-    bed_node, bed_centre = db.find_nearest_plant_bed(cnx, plant, location)
+    flower_bed_route, nearest_node = db.find_nearest_plant_bed(cnx, plant, location)
 
     # Get route between user and flower bed
-    route = get_route(cnx, user_node, bed_node)
+    flower_bed_route.nodes = get_route(cnx, user_node, nearest_node)
 
     # Close database connection
     db.db_close(cnx)
 
-    return route, bed_centre
+    return flower_bed_route
 
 
 def get_poi_route(point_of_int, location):
@@ -46,14 +48,16 @@ def get_route(cnx, node1, node2):
 
     G = db.get_graph(cnx)
 
-    route = nx.astar_path(G, node1, node2)
+    nodes = nx.astar_path(G, node1.id, node2.id)
 
-    route_obj = []
+    route = Route()
 
-    for node in route:
-        route_obj.append(db.get_node_details(cnx, node))
+    route.length = nx.astar_path_length(G, node1.id, node2.id)
 
-    return route_obj
+    for node in nodes:
+        route.nodes.append(db.get_node_details(cnx, node))
+
+    return route
 
 
 def get_plant_name_num(common_name):

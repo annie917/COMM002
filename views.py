@@ -1,6 +1,7 @@
 from flask import Flask, request
 import bus_layer as bl
 from models import Node
+import json
 
 app = Flask(__name__)
 
@@ -14,7 +15,8 @@ def flower_bed_route():
 
     # bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['lat'], request.args['long'], ''))
 
-    bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
+    f_bed_route = bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
+
 
     return 'Flower bed route'
 

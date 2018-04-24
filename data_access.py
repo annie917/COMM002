@@ -1,6 +1,7 @@
 import mysql.connector
 from  mysql.connector import errorcode
 from models import Node
+from models import FlowerBedRoute
 
 def find_nearest_node(cnx, location):
 
@@ -13,11 +14,16 @@ def find_nearest_node(cnx, location):
 
     point = node_to_point(location)
 
-    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) ' \
-                                                                                'as dist from node order by dist;'
+    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
+          'FROM node ' \
+          'ORDER BY dist ' \
+          'LIMIT 1;'
+
     cursor.execute(sql)
 
     node = row_to_node(cursor.fetchone())
+
+    cursor.close()
 
     return node
 
@@ -36,24 +42,50 @@ def find_nearest_plant_bed(cnx, plant, location):
 
     point = node_to_point(location)
 
-
-    sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) as dist, fb.nearest_node from plant_bed pb ' \
-        'JOIN flower_bed fb on pb.bed_id = fb.id where pb.plant_id =' + plant + 'order by dist;'
+    sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, fb.nearest_node ' \
+          'FROM plant_bed pb ' \
+          'JOIN flower_bed fb ' \
+          'ON pb.bed_id = fb.id ' \
+          'WHERE pb.plant_id =' + plant + ' ' \
+          'ORDER BY dist ' \
+          'LIMIT 1;'
 
     cursor.execute(sql)
 
-    node = get_node_details(cnx, cursor.fetchone()[3])
+    row = cursor.fetchone()
 
-    bed_centre = get_bed_centre(cnx, cursor.fetchone()[0])
+    cursor.close()
 
-    return node, bed_centre
+    flower_bed_route = FlowerBedRoute()
+
+    nearest_node = get_node_details(cnx, row[2])
+
+    flower_bed_route.flower_bed_centre = get_bed_centre(cnx, row[0])
+
+    return flower_bed_route, nearest_node
 
 
 def get_graph(cnx):
 
+    import networkx as nx
+
     # Arguments:
     # cnx - a database connection object
     # Returns - a NetworkX Graph object populated with nodes and edges
+
+    cursor = cnx.cursor()
+
+    query = 'SELECT node1, node2, weight ' \
+            'FROM edge'
+
+    cursor.execute(query)
+
+    G = nx.Graph()
+
+    for node1, node2, weight in cursor:
+        G.add_edge(node1, node2, weight=weight)
+
+    cursor.close()
 
     return G
 
@@ -67,11 +99,17 @@ def get_bed_centre(cnx, bed_id):
 
     cursor = cnx.cursor()
 
-    sql = 'SELECT ST_Centroid(polygon) from flower_bed where id = ' + bed_id
+    sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
+          'FROM flower_bed ' \
+          'WHERE id = ' + str(bed_id)
 
     cursor.execute(sql)
 
     bed_centre = point_to_node(cursor.fetchone()[0])
+
+    bed_centre.name = 'Centre node ' + str(bed_id)
+
+    cursor.close()
 
     return bed_centre
 
@@ -97,11 +135,15 @@ def get_node_details(cnx, node_id):
 
     cursor = cnx.cursor()
 
-    sql = 'SELECT id, ST_AsText(coordinates), name from node where id = ' + node_id
+    sql = 'SELECT id, ST_AsText(coordinates), name ' \
+          'FROM node ' \
+          'WHERE id = ' + str(node_id)
 
     cursor.execute(sql)
 
     node = row_to_node(cursor.fetchone())
+
+    cursor.close()
 
     return node
 
@@ -136,7 +178,7 @@ def row_to_node(row):
     x_and_y = row[1].lstrip('POINT(').rstrip(')').split(' ')
 
     # Create and populate a node object
-    node = Node(row[0], float(x_and_y[0]), float(x_and_y[1]), row[2])
+    node = Node(row[0], x_and_y[0], x_and_y[1], row[2])
 
     return node
 
@@ -156,6 +198,6 @@ def point_to_node(point):
     x_and_y = point.lstrip('POINT(').rstrip(')').split(' ')
 
     # Create and populate a node object
-    node = Node(0, float(x_and_y[0]), float(x_and_y[1]), '')
+    node = Node(0, x_and_y[0], x_and_y[1], '')
 
     return node

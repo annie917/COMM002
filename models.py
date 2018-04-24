@@ -44,3 +44,19 @@ class PointOfInterest(Node):
         Node.__init__(self, id, lat, long, name)
 
         self.nearest_node = nearest_node
+
+
+class Route(object):
+
+    def __init__(self):
+
+        self.length = 0.0
+        self.nodes = []
+
+
+class FlowerBedRoute(Route):
+
+    def __init__(self):
+
+        Route.__init__(self)
+        self.flower_bed_centre = Node(0, '0.0', '0.0', '')
