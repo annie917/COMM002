@@ -1,7 +1,5 @@
 import mysql.connector
-from  mysql.connector import errorcode
 from models import Node
-from models import Route
 
 def find_nearest_node(cnx, location):
 
@@ -10,8 +8,6 @@ def find_nearest_node(cnx, location):
     # location - a Node object
     # Returns - a Node object representing the closest node to location
 
-    cursor = cnx.cursor()
-
     point = node_to_point(location)
 
     sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
@@ -19,11 +15,9 @@ def find_nearest_node(cnx, location):
           'ORDER BY dist ' \
           'LIMIT 1;'
 
-    cursor.execute(sql)
+    row = execute_query(cnx, sql)
 
-    node = row_to_node(cursor.fetchone())
-
-    cursor.close()
+    node = row_to_node(row)
 
     return node
 
@@ -38,8 +32,6 @@ def find_nearest_plant_bed(cnx, plant, location):
     # the desired plant
     # Returns - a Node object representing the centre of the closest flower bed
 
-    cursor = cnx.cursor()
-
     point = node_to_point(location)
 
     sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, fb.nearest_node ' \
@@ -50,11 +42,7 @@ def find_nearest_plant_bed(cnx, plant, location):
           'ORDER BY dist ' \
           'LIMIT 1;'
 
-    cursor.execute(sql)
-
-    row = cursor.fetchone()
-
-    cursor.close()
+    row = execute_query(cnx, sql)
 
     nearest_node = get_node_details(cnx, row[2])
 
@@ -65,25 +53,26 @@ def find_nearest_plant_bed(cnx, plant, location):
 
 def find_nearest_poi_node(cnx, poi_id):
 
-    cursor = cnx.cursor()
-
+    # Arguments:
+    # cnx - a database connection object
+    # poi_id - the id of the point of interest
+    # Returns:
+    # A Node object representing the location of the point of interest
+    # A Node object representing the nearest node to the point of interest
 
     sql = 'SELECT name, ST_AsText(coordinates), nearest_node ' \
           'FROM point_of_interest ' \
           'WHERE id =' + str(poi_id) + ';'
 
-    cursor.execute(sql)
+    row = execute_query(cnx, sql)
 
-    row = cursor.fetchone()
-
-    cursor.close()
-
+    # Get the full details of the nearest node
     nearest_node = get_node_details(cnx, row[2])
 
-    poi_node = point_to_node(row[1])
-    poi_node.name = row[0]
+    point_of_int = point_to_node(row[1])
+    point_of_int.name = row[0]
 
-    return poi_node, nearest_node
+    return point_of_int, nearest_node
 
 
 def get_graph(cnx):
@@ -116,21 +105,17 @@ def get_bed_centre(cnx, bed_id):
     # Arguments:
     # cnx - a database connection object
     # bed_id - id of the flower bed in question
-    # Returns - a Node object representing the centre of the flower bed
-
-    cursor = cnx.cursor()
+    # Returns - a Node object representing the centroid of the flower bed polygon
 
     sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
           'FROM flower_bed ' \
           'WHERE id = ' + str(bed_id)
 
-    cursor.execute(sql)
+    row = execute_query(cnx, sql)
 
-    bed_centre = point_to_node(cursor.fetchone()[0])
+    bed_centre = point_to_node(row[0])
 
-    bed_centre.name = 'Centre node ' + str(bed_id)
-
-    cursor.close()
+    bed_centre.name = 'Centre bed ' + str(bed_id)
 
     return bed_centre
 
@@ -154,19 +139,13 @@ def get_node_details(cnx, node_id):
     # node_id - a node id
     # Returns - a Node object populated with full node details
 
-    cursor = cnx.cursor()
-
     sql = 'SELECT id, ST_AsText(coordinates), name ' \
           'FROM node ' \
           'WHERE id = ' + str(node_id)
 
-    cursor.execute(sql)
+    row = execute_query(cnx, sql)
 
-    node = row_to_node(cursor.fetchone())
-
-    cursor.close()
-
-    return node
+    return row_to_node(row)
 
 
 def db_connect():
@@ -189,17 +168,35 @@ def db_close(cnx):
 
     return
 
+
+def execute_query(cnx, sql):
+
+    # Arguments:
+    # sql - string containing SQL query
+    # Returns - a row tuple representing the first row from the query
+
+    cursor = cnx.cursor()
+
+    cursor.execute(sql)
+
+    row = cursor.fetchone()
+
+    cursor.close()
+
+    return row
+
+
 def row_to_node(row):
 
     # Arguments:
-    # row - a row from a cursor object
+    # row - a row (Node table) from a cursor object
     # Returns - a populated Node object
 
     # Strip out the coordinates from converted POINT string
-    x_and_y = row[1].lstrip('POINT(').rstrip(')').split(' ')
+    long_and_lat = row[1].lstrip('POINT(').rstrip(')').split(' ')
 
     # Create and populate a node object
-    node = Node(row[0], x_and_y[0], x_and_y[1], row[2])
+    node = Node(row[0], long_and_lat[0], long_and_lat[1], row[2])
 
     return node
 
@@ -216,9 +213,13 @@ def node_to_point(node):
 
 def point_to_node(point):
 
-    x_and_y = point.lstrip('POINT(').rstrip(')').split(' ')
+    # Arguments:
+    # point - a string representing a MySQL POINT data type
+    # Returns a populated Node object, with lat and long from point, id=0 and blank name
+
+    long_and_lat = point.lstrip('POINT(').rstrip(')').split(' ')
 
     # Create and populate a node object
-    node = Node(0, x_and_y[0], x_and_y[1], '')
+    node = Node(0, long_and_lat[0], long_and_lat[1], '')
 
     return node

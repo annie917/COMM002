@@ -1,7 +1,7 @@
-from flask import Flask, request
+from flask import Flask, request, Response, make_response
 import bus_layer as bl
 from models import Node
-import json
+import jsonpickle
 
 app = Flask(__name__)
 
@@ -13,18 +13,19 @@ def hello_world():
 @app.route('/fbr')
 def flower_bed_route():
 
-    # bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['lat'], request.args['long'], ''))
+    f_bed_route = bl.get_flower_bed_route(request.args['plant'], Node(0, request.args['long'], request.args['lat'], ''))
 
-    f_bed_route = bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
+    # f_bed_route = bl.get_flower_bed_route('72209', Node(0, '-0.8570765', '51.2914787', ''))
 
-    return 'Flower bed route'
+    return get_response(f_bed_route)
 
 @app.route('/point_route')
 def poi_route():
 
-    route = bl.get_poi_route(2, Node(0, '-0.8570765', '51.2914787', ''))
+    route = bl.get_poi_route(request.args['poi_id'], Node(0, request.args['long'], request.args['lat'], ''))
+    # route = bl.get_poi_route(2, Node(0, '-0.8570765', '51.2914787', ''))
 
-    return 'Point of interest route'
+    return get_response(route)
 
 @app.route('/pnn')
 def plant_name_num():
@@ -37,6 +38,15 @@ def get_plants():
 @app.route('/point_int')
 def points_of_int():
     return 'Get points of interest route'\
+
+
+def get_response(resp_obj):
+
+    resp = make_response(jsonpickle.encode(resp_obj))
+    resp.mimetype = 'application/json'
+
+    return resp
+
 
 if __name__ == '__main__':
     app.run()
