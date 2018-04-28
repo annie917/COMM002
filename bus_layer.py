@@ -110,3 +110,21 @@ def get_points_of_interest(location, n):
 
     return points_of_int
 
+def get_flower_beds(location, plant, n):
+
+    # Gets the n closest flower beds to location, which contain plant
+    # Arguments:
+    # location - a Node Object
+    # plant - a plant name number
+    # n - maximum number of beds to be returned
+    # Returns:
+    # A list of Node Objects representing the n flower beds
+
+    cnx = db.db_connect()
+
+    flower_beds = db.get_flower_beds(cnx, location, plant, n)
+
+    db.db_close(cnx)
+
+    return flower_beds
+

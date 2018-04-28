@@ -10,6 +10,7 @@ app = Flask(__name__)
 def hello_world():
     return 'Hello, World!'
 
+
 @app.route('/fbr')
 def flower_bed_route():
 
@@ -19,6 +20,7 @@ def flower_bed_route():
 
     return get_response(f_bed_route)
 
+
 @app.route('/point_route')
 def poi_route():
 
@@ -27,13 +29,16 @@ def poi_route():
 
     return get_response(route)
 
+
 @app.route('/pnn')
 def plant_name_num():
     return 'Plant name num route'\
 
+
 @app.route('/plants')
 def get_plants():
     return 'Get plants route'\
+
 
 @app.route('/point_int')
 def points_of_int():
@@ -41,6 +46,15 @@ def points_of_int():
     points_of_int = bl.get_points_of_interest(Node(0, request.args['long'], request.args['lat'], ''), request.args['n'])
 
     return get_response(points_of_int)
+
+
+@app.route('/flower_beds')
+def flower_beds():
+
+    flower_beds = bl.get_flower_beds(Node(0, request.args['long'], request.args['lat'], ''),
+                                       request.args['plant'], request.args['n'])
+
+    return get_response(flower_beds)
 
 
 def get_response(resp_obj):

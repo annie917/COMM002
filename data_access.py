@@ -180,6 +180,52 @@ def get_points_of_interest(cnx, location, n):
     return points_of_int
 
 
+def get_flower_beds(cnx, location, plant, n):
+
+    # Gets the n closest flower beds to location which contain plant, sorted by distance from location
+    # Arguments:
+    # cnx - a database connection object
+    # location - a Node object with the current location
+    # n - the number of points of interest to be returned (0 returns all)
+    # Returns - a list of Node objects representing points of interest
+
+    cursor = cnx.cursor()
+
+    point = _node_to_point(location)
+
+    sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, ST_AsText(ST_Centroid(polygon)) ' \
+          'FROM plant_bed pb ' \
+          'JOIN flower_bed fb ' \
+          'ON pb.bed_id = fb.id ' \
+          'WHERE pb.plant_id =' + plant + ' ' \
+          'ORDER BY dist'
+    print(sql)
+    # Limit query to n rows if required
+    if n != '0':
+        sql += ' LIMIT '
+        sql += n
+
+    sql += ';'
+
+    cursor.execute(sql)
+
+    flower_beds = []
+
+    # Copy flower bed to Node object and append to list
+    for row in cursor:
+
+        node = _point_to_node(row[2])
+
+        node.id = row[0]
+        node.name = 'Flower Bed ' + str(node.id)
+
+        flower_beds.append(node)
+
+    cursor.close()
+
+    return flower_beds
+
+
 def get_node_details(cnx, node_id):
 
     # Gets full details from node table for id = node_id
