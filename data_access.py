@@ -1,5 +1,6 @@
 import mysql.connector
 from models import Node
+from models import Plant
 
 def find_nearest_node(cnx, location):
 
@@ -125,14 +126,67 @@ def get_bed_centre(cnx, bed_id):
     return bed_centre
 
 
-def get_plant_attributes(cnx, plant_name_num):
+def get_plant_name_num(common_name):
 
+    import lxml.etree as etree
+
+    plant_name_num = ''
+
+    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
+                                       events=("start", "end")):
+        if event == "start":
+            if elem.tag == 'EntityDetailsItems':
+                if elem.attrib['PreferredCommonName'] == common_name:
+                    plant_name_num = elem.attrib['Name_Num']
+                    break
+
+        elem.clear()
+
+    return plant_name_num
+
+
+def get_plant_attributes(plant_name_num):
+
+    # Populates and returns a plant object for the given plant_name_num
     # Arguments:
-    # cnx - a database connection object
     # plant_name_num - a plant name number
     # Returns - a Plant object populated with available attributes
 
+    import lxml.etree as etree
 
+    plant = Plant()
+
+    plant.name_num = plant_name_num
+
+    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
+                                       events=("start", "end")):
+        if event == "start":
+            if elem.tag == 'EntityDetailsItems':
+                if elem.attrib['Name_Num'] == plant_name_num:
+                    plant.pic = elem.attrib['PlantImagePath']
+                    plant.height = elem.attrib['Height']
+                    plant.hardiness = elem.attrib['Hardiness']
+                    plant.common_name = elem.attrib['PreferredCommonName']
+                    plant.spread = elem.attrib['Spread']
+                    plant.time_to_full_height = elem.attrib['TimeToFullHeight']
+                    plant.accepted_botanical_name = elem.attrib['AcceptedBotanicalName']
+                    plant.description = elem.attrib['EntityDescription']
+                    plant.soil_type = elem.attrib['SoilType']
+                    plant.foliage = elem.attrib['Foliage']
+                    plant.uses = elem.attrib['SuggestedPlantUses']
+                    plant.aspect = elem.attrib['Aspect']
+                    plant.flower_colour = elem.attrib['Flower']
+                    plant.moisture = elem.attrib['Moisture']
+                    plant.ph = elem.attrib['PH']
+                    plant.disease_resistance = elem.attrib['DiseaseResistance']
+                    plant.sunlight = elem.attrib['Sunlight']
+                    plant.exposure = elem.attrib['Exposure']
+                    plant.cultivation = elem.attrib['Cultivation']
+                    plant.low_maintenance = elem.attrib['LowMaintenance']
+
+                    break
+
+        elem.clear()
 
     return plant
 

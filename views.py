@@ -30,9 +30,12 @@ def poi_route():
     return get_response(route)
 
 
-@app.route('/pnn')
-def plant_name_num():
-    return 'Plant name num route'\
+@app.route('/plant')
+def get_plant():
+
+    plant = bl.get_plant(request.args['name'])
+
+    return get_response(plant)
 
 
 @app.route('/plants')

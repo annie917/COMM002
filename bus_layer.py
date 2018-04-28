@@ -1,5 +1,6 @@
 import data_access as db
 from models import Route
+from models import Plant
 
 def get_flower_bed_route(plant, location):
     # Arguments:
@@ -77,12 +78,21 @@ def get_route(cnx, node1, node2):
     return route
 
 
-def get_plant_name_num(common_name):
+def get_plant(common_name):
+
+    # Given an (exact) common name, returns a Plant object populated with the corresponding attributes
     # Arguments:
     # common_name - a string containing the common name of the desired plant
-    # Returns - a string containing the plant name num if found, otherwise an empty string
+    # Returns - a populated Plant object
 
-    return plant_name_num
+    plant_name_num = db.get_plant_name_num(common_name)
+
+    if plant_name_num:
+        plant = db.get_plant_attributes(plant_name_num)
+    else:
+        plant=Plant()
+
+    return plant
 
 
 def get_plant_list(search_string, n):

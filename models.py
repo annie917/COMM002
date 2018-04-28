@@ -1,28 +1,29 @@
 class Plant(object):
 
-    def __init__(self, plant_name):
+    def __init__(self):
 
         self.name_num = ''
-        self.common_name = plant_name
+        self.common_name = ''
         self.pic = ''
         self.height = ''
+        self.spread = ''
+        self.time_to_full_height = ''
         self.hardiness = ''
+        self.accepted_botanical_name = ''
+        self.description = ''
+        self.soil_type = ''
+        self.foliage = ''
+        self.uses = ''
+        self.aspect = ''
+        self.flower_colour = ''
+        self.moisture = ''
+        self.ph = ''
+        self.disease_resistance = ''
+        self.sunlight = ''
+        self.exposure = ''
+        self.cultivation = ''
+        self.low_maintenance = ''
 
-    def populate_xml(self):
-
-        from lxml import etree
-
-        for event, elem in etree.iterparse('../plantselector.xml', events=("start", "end")):
-            if event == "start":
-                if elem.tag == 'EntityDetailsItems':
-                    if elem.attrib['PreferredCommonName'] == self.common_name:
-                        self.name_num = elem.attrib['Name_Num']
-                        self.pic = elem.attrib['PlantImagePath']
-                        self.height = elem.attrib['Height']
-                        self.hardiness = elem.attrib['Hardiness']
-                        break
-
-            elem.clear()
 
 class Node(object):
 
