@@ -95,10 +95,18 @@ def get_plant_list(search_string, n):
 
 
 def get_points_of_interest(location, n):
+
+    # Gets n closest points of interest to location
     # Arguments:
     # location - a Node object
     # n - maximum number of points of interest to return.  0 will return all
     # Returns - a list of n PointOfInterest objects, sorted by distance from location
+
+    cnx = db.db_connect()
+
+    points_of_int = db.get_points_of_interest(cnx, location, n)
+
+    db.db_close(cnx)
 
     return points_of_int
 

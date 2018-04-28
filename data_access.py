@@ -3,27 +3,29 @@ from models import Node
 
 def find_nearest_node(cnx, location):
 
+    # Finds the node nearest to location
     # Arguments:
     # cnx - a database connection object
     # location - a Node object
     # Returns - a Node object representing the closest node to location
 
-    point = node_to_point(location)
+    point = _node_to_point(location)
 
     sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
           'FROM node ' \
           'ORDER BY dist ' \
           'LIMIT 1;'
 
-    row = execute_query(cnx, sql)
+    row = _execute_query_one(cnx, sql)
 
-    node = row_to_node(row)
+    node = _row_to_node(row)
 
     return node
 
 
 def find_nearest_plant_bed(cnx, plant, location):
 
+    # Finds the closest flower bed to location that contains the plant
     # Arguments:
     # cnx - a database connection object
     # plant - the plant name number of the desired plant
@@ -32,7 +34,7 @@ def find_nearest_plant_bed(cnx, plant, location):
     # the desired plant
     # Returns - a Node object representing the centre of the closest flower bed
 
-    point = node_to_point(location)
+    point = _node_to_point(location)
 
     sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, fb.nearest_node ' \
           'FROM plant_bed pb ' \
@@ -42,7 +44,7 @@ def find_nearest_plant_bed(cnx, plant, location):
           'ORDER BY dist ' \
           'LIMIT 1;'
 
-    row = execute_query(cnx, sql)
+    row = _execute_query_one(cnx, sql)
 
     nearest_node = get_node_details(cnx, row[2])
 
@@ -53,6 +55,7 @@ def find_nearest_plant_bed(cnx, plant, location):
 
 def find_nearest_poi_node(cnx, poi_id):
 
+    # Finds the closest node to poi_id, and also gets details of the point of interest
     # Arguments:
     # cnx - a database connection object
     # poi_id - the id of the point of interest
@@ -64,12 +67,12 @@ def find_nearest_poi_node(cnx, poi_id):
           'FROM point_of_interest ' \
           'WHERE id =' + str(poi_id) + ';'
 
-    row = execute_query(cnx, sql)
+    row = _execute_query_one(cnx, sql)
 
     # Get the full details of the nearest node
     nearest_node = get_node_details(cnx, row[2])
 
-    point_of_int = point_to_node(row[1])
+    point_of_int = _point_to_node(row[1])
     point_of_int.name = row[0]
 
     return point_of_int, nearest_node
@@ -79,6 +82,7 @@ def get_graph(cnx):
 
     import networkx as nx
 
+    # Populates a NetworkX Graph object using the edge database table
     # Arguments:
     # cnx - a database connection object
     # Returns - a NetworkX Graph object populated with nodes and edges
@@ -102,6 +106,7 @@ def get_graph(cnx):
 
 def get_bed_centre(cnx, bed_id):
 
+    # Gets the mathematical centroid of the flower bed with id = bed_id
     # Arguments:
     # cnx - a database connection object
     # bed_id - id of the flower bed in question
@@ -111,9 +116,9 @@ def get_bed_centre(cnx, bed_id):
           'FROM flower_bed ' \
           'WHERE id = ' + str(bed_id)
 
-    row = execute_query(cnx, sql)
+    row = _execute_query_one(cnx, sql)
 
-    bed_centre = point_to_node(row[0])
+    bed_centre = _point_to_node(row[0])
 
     bed_centre.name = 'Centre bed ' + str(bed_id)
 
@@ -132,8 +137,52 @@ def get_plant_attributes(cnx, plant_name_num):
     return plant
 
 
+def get_points_of_interest(cnx, location, n):
+
+    # Gets the n closest points of interest to location, sorted by distance from location
+    # Arguments:
+    # cnx - a database connection object
+    # location - a Node object with the current location
+    # n - the number of points of interest to be returned (0 returns all)
+    # Returns - a list of Node objects representing points of interest
+
+    cursor = cnx.cursor()
+
+    point = _node_to_point(location)
+
+    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
+          'FROM point_of_interest ' \
+          'ORDER BY dist'
+
+    # Limit query to n rows if required
+    if n != '0':
+        sql += ' LIMIT '
+        sql += n
+
+    sql += ';'
+
+    cursor.execute(sql)
+
+    points_of_int = []
+
+    # Copy points of interest to Node object and append to list
+    for row in cursor:
+
+        node = _point_to_node(row[1])
+
+        node.id = row[0]
+        node.name = row[2]
+
+        points_of_int.append(node)
+
+    cursor.close()
+
+    return points_of_int
+
+
 def get_node_details(cnx, node_id):
 
+    # Gets full details from node table for id = node_id
     # Arguments:
     # cnx - a database connection object
     # node_id - a node id
@@ -143,9 +192,9 @@ def get_node_details(cnx, node_id):
           'FROM node ' \
           'WHERE id = ' + str(node_id)
 
-    row = execute_query(cnx, sql)
+    row = _execute_query_one(cnx, sql)
 
-    return row_to_node(row)
+    return _row_to_node(row)
 
 
 def db_connect():
@@ -169,8 +218,9 @@ def db_close(cnx):
     return
 
 
-def execute_query(cnx, sql):
+def _execute_query_one(cnx, sql):
 
+    # Returns first result for query defined in sql parameter
     # Arguments:
     # sql - string containing SQL query
     # Returns - a row tuple representing the first row from the query
@@ -186,8 +236,9 @@ def execute_query(cnx, sql):
     return row
 
 
-def row_to_node(row):
+def _row_to_node(row):
 
+    # Converts a node table row tuple to a Node object
     # Arguments:
     # row - a row (Node table) from a cursor object
     # Returns - a populated Node object
@@ -201,8 +252,9 @@ def row_to_node(row):
     return node
 
 
-def node_to_point(node):
+def _node_to_point(node):
 
+    # Converts a Node object to POINT format required in SQL
     # Arguments:
     # node - a Node object
     # Returns - a string representing a POINT as required by MySQL
@@ -211,8 +263,9 @@ def node_to_point(node):
 
     return point
 
-def point_to_node(point):
+def _point_to_node(point):
 
+    # Converts a POINT MySQL string to a node object
     # Arguments:
     # point - a string representing a MySQL POINT data type
     # Returns a populated Node object, with lat and long from point, id=0 and blank name

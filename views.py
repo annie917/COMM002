@@ -37,7 +37,10 @@ def get_plants():
 
 @app.route('/point_int')
 def points_of_int():
-    return 'Get points of interest route'\
+
+    points_of_int = bl.get_points_of_interest(Node(0, request.args['long'], request.args['lat'], ''), request.args['n'])
+
+    return get_response(points_of_int)
 
 
 def get_response(resp_obj):
