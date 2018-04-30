@@ -85,21 +85,22 @@ def get_plant(common_name):
     # common_name - a string containing the common name of the desired plant
     # Returns - a populated Plant object
 
-    plant_name_num = db.get_plant_name_num(common_name)
+    # plant_name_num = db.get_plant_name_num(common_name)
 
-    if plant_name_num:
-        plant = db.get_plant_attributes(plant_name_num)
-    else:
-        plant=Plant()
+    plant = db.get_plant_attributes(common_name)
 
     return plant
 
 
 def get_plant_list(search_string, n):
+
+    # Searches all relevant fields for search_string and returns first n instances as list of Plant objects
     # Arguments:
     # search_string - a string for searching all possible name fields in the plant selector xml
     # n - maximum number of plants to maintain
     # Returns - a collection of populated Plant objects
+
+    plants = db.get_plants(search_string, n)
 
     return plants
 

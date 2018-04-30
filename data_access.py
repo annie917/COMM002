@@ -145,50 +145,120 @@ def get_plant_name_num(common_name):
     return plant_name_num
 
 
-def get_plant_attributes(plant_name_num):
+def get_plant_attributes(pref_common_name):
 
-    # Populates and returns a plant object for the given plant_name_num
+    # Populates and returns a plant object for the given (exact) pref_common_name
     # Arguments:
-    # plant_name_num - a plant name number
+    # pref_common_name - preferred common name (string)
     # Returns - a Plant object populated with available attributes
 
     import lxml.etree as etree
 
     plant = Plant()
 
-    plant.name_num = plant_name_num
+    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
+                                       events=("start", "end")):
+
+        if event == "start" and elem.tag == 'EntityDetailsItems':
+            # Start of a plant - check if correct one then populate object with attributes
+            if elem.attrib['PreferredCommonName'] == pref_common_name:
+                plant = _populate_plant(elem)
+
+        elif event == 'end':
+
+            # Add any common names or synonyms to the plant object
+            if (elem.tag == 'CommonName' or elem.tag == 'Synonyms') and plant.common_name == pref_common_name:
+
+                    if elem.tag == 'CommonName' and elem.text:
+                        plant.common_names.append(elem.text)
+                    elif elem.tag == 'Synonyms' and elem.text:
+                        plant.synonyms.append(elem.text)
+
+            elif elem.tag == 'EntityDetailsItems':
+
+                # Plant finished - delete extra synonym caused by extra XML tag, then break
+                if plant.common_name == pref_common_name:
+                    elem.clear()
+                    if plant.synonyms:
+                        del plant.synonyms[-1]
+                        break
+
+            # Clear element when finished with it to save memory
+            elem.clear()
+
+    return plant
+
+
+def get_plants(search_string, n):
+
+    # Examines the PreferredCommonName, AcceptedBotanicalName, CommonName and Synonyms fields for the search string
+    # and returns a list of n Plant objects populated with the attributes of the first n matches
+    # Arguments:
+    # search_string - string to be matched
+    # n - maximum required number of plants
+    # Returns - A list of max n Plant objects, populated with attributes
+
+    import lxml.etree as etree
+
+    s = search_string.lower()
+    plants = []
+    found = False
 
     for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
                                        events=("start", "end")):
-        if event == "start":
-            if elem.tag == 'EntityDetailsItems':
-                if elem.attrib['Name_Num'] == plant_name_num:
-                    plant.pic = elem.attrib['PlantImagePath']
-                    plant.height = elem.attrib['Height']
-                    plant.hardiness = elem.attrib['Hardiness']
-                    plant.common_name = elem.attrib['PreferredCommonName']
-                    plant.spread = elem.attrib['Spread']
-                    plant.time_to_full_height = elem.attrib['TimeToFullHeight']
-                    plant.accepted_botanical_name = elem.attrib['AcceptedBotanicalName']
-                    plant.description = elem.attrib['EntityDescription']
-                    plant.soil_type = elem.attrib['SoilType']
-                    plant.foliage = elem.attrib['Foliage']
-                    plant.uses = elem.attrib['SuggestedPlantUses']
-                    plant.aspect = elem.attrib['Aspect']
-                    plant.flower_colour = elem.attrib['Flower']
-                    plant.moisture = elem.attrib['Moisture']
-                    plant.ph = elem.attrib['PH']
-                    plant.disease_resistance = elem.attrib['DiseaseResistance']
-                    plant.sunlight = elem.attrib['Sunlight']
-                    plant.exposure = elem.attrib['Exposure']
-                    plant.cultivation = elem.attrib['Cultivation']
-                    plant.low_maintenance = elem.attrib['LowMaintenance']
 
-                    break
+        if event == "start" and elem.tag == 'EntityDetailsItems':
 
-        elem.clear()
+                plant_elem = elem
 
-    return plant
+                # Start of a plant - check relevant attributes
+
+                if s in plant_elem.attrib['PreferredCommonName'].lower() or \
+                        s in plant_elem.attrib['AcceptedBotanicalName'].lower():
+
+                    plant = _populate_plant(plant_elem)
+
+                    found = True
+
+        elif event == 'end':
+
+            if elem.tag == 'CommonName' or elem.tag == 'Synonyms':
+
+                # Only check common names and synonyms if attributes didn't match
+                if not found:
+                     if elem.text:
+                        if s in elem.text.lower():
+                            plant = _populate_plant(plant_elem)
+                            found = True
+
+                # If plant has been stored, add any common names and synonyms
+                if found:
+                    if elem.tag =='CommonName' and elem.text:
+                        plant.common_names.append(elem.text)
+                    elif elem.tag == 'Synonyms' and elem.text:
+                        plant.synonyms.append(elem.text)
+
+            elif elem.tag == 'EntityDetailsItems':
+
+                # End of a plant
+                # Break if we have enough records, else reset found
+                if found:
+                    if plant.synonyms:
+                        # Delete extra synonym generated by extra XML tag
+                        del plant.synonyms[-1]
+
+                    plants.append(plant)
+
+                    if len(plants) >= int(n):
+                        break
+                    else:
+                        found = False
+
+            # Clear the element to save memory
+            elem.clear()
+            plant_elem.clear()
+
+    return plants
 
 
 def get_points_of_interest(cnx, location, n):
@@ -368,7 +438,7 @@ def _point_to_node(point):
     # Converts a POINT MySQL string to a node object
     # Arguments:
     # point - a string representing a MySQL POINT data type
-    # Returns a populated Node object, with lat and long from point, id=0 and blank name
+    # Returns - a populated Node object, with lat and long from point, id=0 and blank name
 
     long_and_lat = point.lstrip('POINT(').rstrip(')').split(' ')
 
@@ -376,3 +446,36 @@ def _point_to_node(point):
     node = Node(0, long_and_lat[0], long_and_lat[1], '')
 
     return node
+
+def _populate_plant(elem):
+
+    # Populates a Plant object with attributes from elem
+    # Arguments:
+    # elem - an XML element
+    # plant - a Plant object
+    # Returns - the populated Plant object
+
+    plant = Plant()
+    plant.name_num = elem.attrib['Name_Num']
+    plant.pic = elem.attrib['PlantImagePath']
+    plant.height = elem.attrib['Height']
+    plant.hardiness = elem.attrib['Hardiness']
+    plant.common_name = elem.attrib['PreferredCommonName']
+    plant.spread = elem.attrib['Spread']
+    plant.time_to_full_height = elem.attrib['TimeToFullHeight']
+    plant.accepted_botanical_name = elem.attrib['AcceptedBotanicalName']
+    plant.description = elem.attrib['EntityDescription']
+    plant.soil_type = elem.attrib['SoilType']
+    plant.foliage = elem.attrib['Foliage']
+    plant.uses = elem.attrib['SuggestedPlantUses']
+    plant.aspect = elem.attrib['Aspect']
+    plant.flower_colour = elem.attrib['Flower']
+    plant.moisture = elem.attrib['Moisture']
+    plant.ph = elem.attrib['PH']
+    plant.disease_resistance = elem.attrib['DiseaseResistance']
+    plant.sunlight = elem.attrib['Sunlight']
+    plant.exposure = elem.attrib['Exposure']
+    plant.cultivation = elem.attrib['Cultivation']
+    plant.low_maintenance = elem.attrib['LowMaintenance']
+
+    return plant

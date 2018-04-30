@@ -23,6 +23,8 @@ class Plant(object):
         self.exposure = ''
         self.cultivation = ''
         self.low_maintenance = ''
+        self.common_names = []
+        self.synonyms = []
 
 
 class Node(object):

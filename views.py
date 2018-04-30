@@ -40,7 +40,10 @@ def get_plant():
 
 @app.route('/plants')
 def get_plants():
-    return 'Get plants route'\
+
+    plants = bl.get_plant_list(request.args['string'], request.args['n'])
+
+    return get_response(plants)
 
 
 @app.route('/point_int')
