@@ -2,7 +2,8 @@ import data_access as db
 from models import Route
 from models import Plant
 
-def get_flower_bed_route(plant, location):
+def get_flower_bed_route(plant_name_num, location):
+
     # Arguments:
     # plant - the plant name number of the desired plant
     # location - the location of the user
@@ -17,7 +18,7 @@ def get_flower_bed_route(plant, location):
     user_node = db.find_nearest_node(cnx, location)
 
     # Get closest flower bed containing plant
-    bed_centre, nearest_node = db.find_nearest_plant_bed(cnx, plant, location)
+    bed_centre, nearest_node = db.find_nearest_plant_bed(cnx, plant_name_num, location)
 
     # Get route between user and flower bed
     route = get_route(cnx, user_node, nearest_node)
