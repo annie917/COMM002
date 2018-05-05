@@ -123,11 +123,15 @@ def get_bed_centre(cnx, bed_id):
 def get_plant_name_num(common_name):
 
     import lxml.etree as etree
+    import configparser
+
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    xml_file_name = config['XML']['file_path']
 
     plant_name_num = ''
 
-    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
-                                       events=("start", "end")):
+    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
         if event == "start":
             if elem.tag == 'EntityDetailsItems':
                 if elem.attrib['PreferredCommonName'] == common_name:
@@ -147,11 +151,15 @@ def get_plant_attributes(pref_common_name):
     # Returns - a Plant object populated with available attributes
 
     import lxml.etree as etree
+    import configparser
+
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    xml_file_name = config['XML']['file_path']
 
     plant = Plant()
 
-    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
-                                       events=("start", "end")):
+    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
 
         if event == "start" and elem.tag == 'EntityDetailsItems':
             # Start of a plant - check if correct one then populate object with attributes
@@ -193,13 +201,17 @@ def get_plants(search_string, n):
     # Returns - A list of max n Plant objects, populated with attributes
 
     import lxml.etree as etree
+    import configparser
+
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    xml_file_name = config['XML']['file_path']
 
     s = search_string.lower()
     plants = []
     found = False
 
-    for event, elem in etree.iterparse('/Users/Annie/Documents/Surrey/COMM002/XML/plantselector.xml',
-                                       events=("start", "end")):
+    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
 
         if event == "start" and elem.tag == 'EntityDetailsItems':
 
@@ -362,10 +374,19 @@ def get_node_details(cnx, node_id):
 
 def db_connect():
 
+    import configparser
+
     # Arguments - None
     # Returns connection object
 
-    cnx = mysql.connector.connect(user='root', host='localhost', database='wisley')
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    user = config['MySql']['user']
+    host = config['MySql']['host']
+    database = config['MySql']['database']
+
+    cnx = mysql.connector.connect(user=user, host=host, database=database)
 
     return cnx
 
