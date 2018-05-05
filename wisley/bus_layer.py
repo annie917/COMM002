@@ -18,7 +18,7 @@ def get_flower_bed_route(plant_name_num, location):
     user_node = db.find_nearest_node(cnx, location)
 
     # Get closest flower bed containing plant
-    bed_centre, nearest_node = db.find_nearest_plant_bed(cnx, plant_name_num, location)
+    nearest_node, bed_centre  = db.find_nearest_plant_bed(cnx, plant_name_num, location)
 
     # Get route between user and flower bed
     route = get_route(cnx, user_node, nearest_node)

@@ -10,18 +10,14 @@ def find_nearest_node(cnx, location):
     # location - a Node object
     # Returns - a Node object representing the closest node to location
 
-    point = _node_to_point(location)
-
-    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
+    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + location.point_str() + ', coordinates) AS dist ' \
           'FROM node ' \
           'ORDER BY dist ' \
           'LIMIT 1;'
 
     row = _execute_query_one(cnx, sql)
 
-    node = _row_to_node(row)
-
-    return node
+    return Node.from_db_row(row)
 
 
 def find_nearest_plant_bed(cnx, plant, location):
@@ -35,9 +31,7 @@ def find_nearest_plant_bed(cnx, plant, location):
     # the desired plant
     # Returns - a Node object representing the centre of the closest flower bed
 
-    point = _node_to_point(location)
-
-    sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, fb.nearest_node ' \
+    sql = 'SELECT pb.bed_id, ST_Distance(' + location.point_str() + ', fb.polygon) AS dist, fb.nearest_node ' \
           'FROM plant_bed pb ' \
           'JOIN flower_bed fb ' \
           'ON pb.bed_id = fb.id ' \
@@ -51,7 +45,7 @@ def find_nearest_plant_bed(cnx, plant, location):
 
     bed_centre = get_bed_centre(cnx, row[0])
 
-    return bed_centre, nearest_node
+    return nearest_node, bed_centre
 
 
 def find_nearest_poi_node(cnx, poi_id):
@@ -73,7 +67,7 @@ def find_nearest_poi_node(cnx, poi_id):
     # Get the full details of the nearest node
     nearest_node = get_node_details(cnx, row[2])
 
-    point_of_int = _point_to_node(row[1])
+    point_of_int = Node.from_point_string(row[1])
     point_of_int.name = row[0]
 
     return point_of_int, nearest_node
@@ -119,7 +113,7 @@ def get_bed_centre(cnx, bed_id):
 
     row = _execute_query_one(cnx, sql)
 
-    bed_centre = _point_to_node(row[0])
+    bed_centre = Node.from_point_string(row[0])
 
     bed_centre.name = 'Centre bed ' + str(bed_id)
 
@@ -162,7 +156,7 @@ def get_plant_attributes(pref_common_name):
         if event == "start" and elem.tag == 'EntityDetailsItems':
             # Start of a plant - check if correct one then populate object with attributes
             if elem.attrib['PreferredCommonName'] == pref_common_name:
-                plant = _populate_plant(elem)
+                plant.populate_xml(elem)
 
         elif event == 'end':
 
@@ -216,7 +210,8 @@ def get_plants(search_string, n):
                 if s in plant_elem.attrib['PreferredCommonName'].lower() or \
                         s in plant_elem.attrib['AcceptedBotanicalName'].lower():
 
-                    plant = _populate_plant(plant_elem)
+                    plant = Plant()
+                    plant.populate_xml(plant_elem)
 
                     found = True
 
@@ -228,7 +223,8 @@ def get_plants(search_string, n):
                 if not found:
                      if elem.text:
                         if s in elem.text.lower():
-                            plant = _populate_plant(plant_elem)
+                            plant = Plant()
+                            plant.populate_xml(plant_elem)
                             found = True
 
                 # If plant has been stored, add any common names and synonyms
@@ -272,9 +268,7 @@ def get_points_of_interest(cnx, location, n):
 
     cursor = cnx.cursor()
 
-    point = _node_to_point(location)
-
-    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + point + ', coordinates) AS dist ' \
+    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + location.point_str() + ', coordinates) AS dist ' \
           'FROM point_of_interest ' \
           'ORDER BY dist'
 
@@ -292,7 +286,7 @@ def get_points_of_interest(cnx, location, n):
     # Copy points of interest to Node object and append to list
     for row in cursor:
 
-        node = _point_to_node(row[1])
+        node = Node.from_point_string(row[1])
 
         node.id = row[0]
         node.name = row[2]
@@ -315,15 +309,14 @@ def get_flower_beds(cnx, location, plant, n):
 
     cursor = cnx.cursor()
 
-    point = _node_to_point(location)
-
-    sql = 'SELECT pb.bed_id, ST_Distance(' + point + ', fb.polygon) AS dist, ST_AsText(ST_Centroid(polygon)) ' \
+    sql = 'SELECT pb.bed_id, ST_Distance(' + location.point_str() + ', fb.polygon) AS dist, ' \
+                                                                    'ST_AsText(ST_Centroid(polygon)) ' \
           'FROM plant_bed pb ' \
           'JOIN flower_bed fb ' \
           'ON pb.bed_id = fb.id ' \
           'WHERE pb.plant_id =' + plant + ' ' \
           'ORDER BY dist'
-    print(sql)
+
     # Limit query to n rows if required
     if n != '0':
         sql += ' LIMIT '
@@ -338,7 +331,7 @@ def get_flower_beds(cnx, location, plant, n):
     # Copy flower bed to Node object and append to list
     for row in cursor:
 
-        node = _point_to_node(row[2])
+        node = Node.from_point_string(row[2])
 
         node.id = row[0]
         node.name = 'Flower Bed ' + str(node.id)
@@ -364,7 +357,7 @@ def get_node_details(cnx, node_id):
 
     row = _execute_query_one(cnx, sql)
 
-    return _row_to_node(row)
+    return Node.from_db_row(row)
 
 
 def db_connect():
@@ -404,78 +397,3 @@ def _execute_query_one(cnx, sql):
     cursor.close()
 
     return row
-
-
-def _row_to_node(row):
-
-    # Converts a node table row tuple to a Node object
-    # Arguments:
-    # row - a row (Node table) from a cursor object
-    # Returns - a populated Node object
-
-    # Strip out the coordinates from converted POINT string
-    long_and_lat = row[1].lstrip('POINT(').rstrip(')').split(' ')
-
-    # Create and populate a node object
-    node = Node(row[0], long_and_lat[0], long_and_lat[1], row[2])
-
-    return node
-
-
-def _node_to_point(node):
-
-    # Converts a Node object to POINT format required in SQL
-    # Arguments:
-    # node - a Node object
-    # Returns - a string representing a POINT as required by MySQL
-
-    point = 'ST_PointFromText(\'POINT(' + node.long + ' ' + node.lat + ')\')'
-
-    return point
-
-def _point_to_node(point):
-
-    # Converts a POINT MySQL string to a node object
-    # Arguments:
-    # point - a string representing a MySQL POINT data type
-    # Returns - a populated Node object, with lat and long from point, id=0 and blank name
-
-    long_and_lat = point.lstrip('POINT(').rstrip(')').split(' ')
-
-    # Create and populate a node object
-    node = Node(0, long_and_lat[0], long_and_lat[1], '')
-
-    return node
-
-def _populate_plant(elem):
-
-    # Populates a Plant object with attributes from elem
-    # Arguments:
-    # elem - an XML element
-    # plant - a Plant object
-    # Returns - the populated Plant object
-
-    plant = Plant()
-    plant.name_num = elem.attrib['Name_Num']
-    plant.pic = elem.attrib['PlantImagePath']
-    plant.height = elem.attrib['Height']
-    plant.hardiness = elem.attrib['Hardiness']
-    plant.common_name = elem.attrib['PreferredCommonName']
-    plant.spread = elem.attrib['Spread']
-    plant.time_to_full_height = elem.attrib['TimeToFullHeight']
-    plant.accepted_botanical_name = elem.attrib['AcceptedBotanicalName']
-    plant.description = elem.attrib['EntityDescription']
-    plant.soil_type = elem.attrib['SoilType']
-    plant.foliage = elem.attrib['Foliage']
-    plant.uses = elem.attrib['SuggestedPlantUses']
-    plant.aspect = elem.attrib['Aspect']
-    plant.flower_colour = elem.attrib['Flower']
-    plant.moisture = elem.attrib['Moisture']
-    plant.ph = elem.attrib['PH']
-    plant.disease_resistance = elem.attrib['DiseaseResistance']
-    plant.sunlight = elem.attrib['Sunlight']
-    plant.exposure = elem.attrib['Exposure']
-    plant.cultivation = elem.attrib['Cultivation']
-    plant.low_maintenance = elem.attrib['LowMaintenance']
-
-    return plant
