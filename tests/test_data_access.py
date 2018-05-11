@@ -120,11 +120,35 @@ def assert_plant(plant1, plant2):
     return
 
 
+def test_node_constructor(node1):
+
+    # Trivial test for classic constructor
+
+    act_node = Node(0, '-0.84571884220576', '51.2945043901003', '')
+
+    assert_node(node1, act_node)
+
+    return
+
+
 def test__point_to_node(node1, point1):
 
-    act_ret_val = node1.from_point_string(point1)
+    # Tests Node constructor from point string
 
-    assert_node(node1, act_ret_val)
+    act_node = Node.from_point_string(point1)
+
+    assert_node(node1, act_node)
+
+    return
+
+
+def test_node_from_db_row(node1):
+
+    db_row = (0, 'POINT(-0.84571884220576 51.2945043901003)', '')
+
+    act_node = Node.from_db_row(db_row)
+
+    assert_node(node1, act_node)
 
     return
 
