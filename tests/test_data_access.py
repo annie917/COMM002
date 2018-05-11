@@ -120,57 +120,21 @@ def assert_plant(plant1, plant2):
     return
 
 
-def test_node_constructor(node1):
-
-    # Trivial test for classic constructor
-
-    act_node = Node(0, '-0.84571884220576', '51.2945043901003', '')
-
-    assert_node(node1, act_node)
-
-    return
+@pytest.mark.parametrize("pcn_input, exp_name_num", [
+    ('white bachelor\'s buttons', '97224'),
+    ('cranesbill \'Czakor\'', '97811'),
+    ('greater quaking grass', '76294'),
+    ('not a real plant', '')
+])
 
 
-def test__point_to_node(node1, point1):
+def test_get_plant_name_num(pcn_input, exp_name_num):
 
-    # Tests Node constructor from point string
+    # Tests data access layer method get_plant_name_num
+    # This test uses the real xml file
 
-    act_node = Node.from_point_string(point1)
+    act_plant_name_num = db.get_plant_name_num(pcn_input)
 
-    assert_node(node1, act_node)
+    assert act_plant_name_num == exp_name_num
 
     return
-
-
-def test_node_from_db_row(node1):
-
-    db_row = (0, 'POINT(-0.84571884220576 51.2945043901003)', '')
-
-    act_node = Node.from_db_row(db_row)
-
-    assert_node(node1, act_node)
-
-    return
-
-
-def test__node_to_point(node1, point1):
-
-    exp_ret_val = 'ST_PointFromText(\'' + point1 + '\')'
-
-
-    act_ret_val = node1.point_str()
-
-    assert act_ret_val == exp_ret_val
-
-    return
-
-
-def test__populate_plant(elem1, plant1):
-
-    act_plant = Plant()
-    act_plant.populate_xml(elem1)
-
-    assert_plant(plant1, act_plant)
-
-    return
-
