@@ -1,6 +1,7 @@
 import mysql.connector
 from wisley.models import Node
 from wisley.models import Plant
+from wisley.models import Direction
 
 def find_nearest_node(cnx, location):
 
@@ -370,6 +371,34 @@ def get_node_details(cnx, node_id):
     row = _execute_query_one(cnx, sql)
 
     return Node.from_db_row(row)
+
+
+def get_directions(cnx, node1, node2):
+
+    # Gets directions from node1 --> node2
+    # Arguments:
+    # node1 - id of origin node
+    # node2 - id of destination node
+    # Returns a populated Direction object
+
+    # Edges are stored such that node1 < node2, swap nodes over if needed
+
+    if node1 < node2:
+        query_node1 = node1
+        query_node2 = node2
+        column = 'direction_1_to_2'
+    else:
+        query_node1 = node2
+        query_node2 = node1
+        column = 'direction_2_to_1'
+
+    sql = 'SELECT ' + column + ', weight ' \
+          'FROM edge ' \
+          'WHERE node1 = ' + str(query_node1) + ' AND node2 = ' + str(query_node2)
+
+    row = _execute_query_one(cnx, sql)
+
+    return Direction(node1, node2, row[1], row[0])
 
 
 def db_connect():

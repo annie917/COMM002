@@ -55,26 +55,40 @@ def get_poi_route(point_of_int, location):
     return route
 
 
-def get_route(cnx, node1, node2):
+def get_route(cnx, start_node, dest_node):
 
     import networkx as nx
 
     # Arguments:
     # cnx - database connection object
-    # node1 - a Node object
-    # node2 - a Node object
-    # Returns - a list of Node objects representing the shortest route between node1 and node2
+    # start_node - a Node object
+    # dest_node - a Node object
+    # Returns - a Route object populated with the shortest route between start_node and dest_node
 
+    # Read in network from database
     G = db.get_graph(cnx)
-
-    nodes = nx.astar_path(G, node1.id, node2.id)
 
     route = Route()
 
-    route.length = nx.astar_path_length(G, node1.id, node2.id)
+    # Calculate shortest route and route length
+    nodes = nx.astar_path(G, start_node.id, dest_node.id)
+    route.length = nx.astar_path_length(G, start_node.id, dest_node.id)
+
+    node1 = 0
+
+    # Loop through nodes getting full details and directions from database
 
     for node in nodes:
+
         route.nodes.append(db.get_node_details(cnx, node))
+
+        node2 = node
+
+        if len(route.nodes) > 1:
+
+            route.directions.append(db.get_directions(cnx, node1, node2))
+
+        node1 = node
 
     return route
 

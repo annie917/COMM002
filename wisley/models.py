@@ -101,8 +101,23 @@ class PointOfInterest(Node):
 
 class Route(object):
 
+    # Holds all the information required to pass a route back to client.  Not directly related to a db table
+
     def __init__(self):
 
-        self.length = 0.0
-        self.nodes = []
-        self.destination = Node(0, '0.0', '0.0', '')
+        self.length = 0.0 # Total route length in metres
+        self.nodes = [] # List of node objects in order
+        self.destination = Node(0, '0.0', '0.0', '') # Information about the destination
+        self.directions = [] # List of directions between nodes
+
+
+class Direction(object):
+
+    # Holds information about how to navigate between two nodes
+
+    def __init__(self, node1, node2, length, direction):
+
+        self.node1 = node1 # First node (id as int)
+        self.node2 = node2 # Second node (id as int)
+        self.length = length # Length of stage in metres
+        self.direction = direction # Direction node1 --> node2 (string)
