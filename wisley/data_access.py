@@ -198,7 +198,7 @@ def get_plants(search_string, n):
     # and returns a list of n Plant objects populated with the attributes of the first n matches
     # Arguments:
     # search_string - string to be matched
-    # n - maximum required number of plants
+    # n - maximum required number of plants, 0 returns all
     # Returns - A list of max n Plant objects, populated with attributes
 
     import lxml.etree as etree
@@ -258,7 +258,7 @@ def get_plants(search_string, n):
 
                     plants.append(plant)
 
-                    if len(plants) >= int(n):
+                    if (len(plants) >= int(n)) and (n != '0'):
                         break
                     else:
                         found = False
