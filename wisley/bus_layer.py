@@ -112,7 +112,7 @@ def get_plant_list(search_string, n):
     # Arguments:
     # search_string - a string for searching all possible name fields in the plant selector xml
     # n - maximum number of plants to maintain
-    # Returns - a collection of populated Plant objects
+    # Returns - a list of populated Plant objects, or an empty list if the search string was not found
 
     plants = db.get_plants(search_string, n)
 
