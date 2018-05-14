@@ -11,10 +11,10 @@ from voluptuous import Schema, MultipleInvalid, Coerce, Required
 app = Flask(__name__)
 
 
-@app.route('/fbr')
+@app.route('/route/plant')
 def flower_bed_route():
 
-    """@app.route('/fbr') takes
+    """@app.route('/route/plant') takes
     plant (plant name number, coercible to integer)
     lat (latitude, coercible to float)
     long (longitude, coercible to float)
@@ -50,10 +50,10 @@ def flower_bed_route():
     return resp
 
 
-@app.route('/point_route')
+@app.route('/route/poi')
 def poi_route():
 
-    """@app.route('/point_route') takes
+    """@app.route('/route/poi') takes
     poi_id (point of interest id, coercible to integer)
     lat (latitude, coercible to float)
     long (longitude, coercible to float)
@@ -88,10 +88,10 @@ def poi_route():
     return resp
 
 
-@app.route('/plant')
+@app.route('/plant/exact')
 def get_plant():
 
-    """@app.route('/plant') takes
+    """@app.route('/plant/exact') takes
     name (preferred common name, string)
     Returns a Plant object, fully populated if plant was found by matching name parameter (exact matching only),
     or an empty Plant object if the plant was not found"""
@@ -122,10 +122,10 @@ def get_plant():
     return resp
 
 
-@app.route('/plants')
+@app.route('/plant/list')
 def get_plants():
 
-    """@app.route('/plants') takes
+    """@app.route('/plant/list') takes
     search_string (search string, string)
     n (max number of records required, coercible to int, n=0 returns all
     Searches the Preferred Common Name, Accepted Botanical Name, Synonyms and Common Names fields for the given search
@@ -159,9 +159,9 @@ def get_plants():
     return resp
 
 
-@app.route('/point_int')
+@app.route('/list/poi')
 def points_of_int():
-    """@app.route('/point_int') takes
+    """@app.route('/list/poi') takes
     lat (latitude, coercible to float)
     long (longitude, coercible to float)
     n (max number of items wanted, coercible to int, n=0 returns all)
@@ -197,9 +197,9 @@ def points_of_int():
     return resp
 
 
-@app.route('/flower_beds')
+@app.route('/list/flower_bed')
 def flower_bed_list():
-    """@app.route('/flower_beds') takes
+    """@app.route('/list/flower_bed') takes
     plant (plant name number, coercible to integer)
     lat (latitude, coercible to float)
     long (longitude, coercible to float)
