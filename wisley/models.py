@@ -90,13 +90,13 @@ class Node(object):
 
         return 'ST_PointFromText(\'POINT(' + self.long + ' ' + self.lat + ')\')'
 
-class PointOfInterest(Node):
+class Place(Node):
 
-    def __init__(self, id, lat, long, name, nearest_node):
+    def __init__(self, id, lat, long, name):
 
         Node.__init__(self, id, lat, long, name)
 
-        self.nearest_node = nearest_node
+        self.description = ''
 
 
 class Route(object):

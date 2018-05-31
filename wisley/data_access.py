@@ -1,220 +1,76 @@
 import mysql.connector
 from wisley.models import Node
+from wisley.models import Place
 from wisley.models import Plant
 from wisley.models import Direction
-
-def find_nearest_node(cnx, location):
-
-    # Finds the node nearest to location
-    # Arguments:
-    # cnx - a database connection object
-    # location - a Node object
-    # Returns - a Node object representing the closest node to location
-
-    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + location.point_str() + ', coordinates) AS dist ' \
-          'FROM node ' \
-          'ORDER BY dist ' \
-          'LIMIT 1;'
-
-    row = _execute_query_one(cnx, sql)
-
-    return Node.from_db_row(row)
+import lxml.etree as etree
+import configparser
 
 
-def find_nearest_plant_bed(cnx, plant, location):
-
-    # Finds the closest flower bed to location that contains the plant
-    # Arguments:
-    # cnx - a database connection object
-    # plant - the plant name number of the desired plant
-    # location - the location of the user
-    # Returns - a Node object representing the node closest to the closest flower bed containing
-    # the desired plant
-    # Returns - a Node object representing the centre of the closest flower bed
-
-    sql = 'SELECT pb.bed_id, ST_Distance(' + location.point_str() + ', fb.polygon) AS dist, fb.nearest_node ' \
-          'FROM plant_bed pb ' \
-          'JOIN flower_bed fb ' \
-          'ON pb.bed_id = fb.id ' \
-          'WHERE pb.plant_id =' + plant + ' ' \
-          'ORDER BY dist ' \
-          'LIMIT 1;'
-
-    row = _execute_query_one(cnx, sql)
-
-    nearest_node = get_node_details(cnx, row[2])
-
-    bed_centre = get_bed_centre(cnx, row[0])
-
-    return nearest_node, bed_centre
+class DAO_Plants(object):
 
 
-def find_nearest_poi_node(cnx, poi_id):
+    def __init__(self):
 
-    # Finds the closest node to poi_id, and also gets details of the point of interest
-    # Arguments:
-    # cnx - a database connection object
-    # poi_id - the id of the point of interest
-    # Returns:
-    # A Node object representing the location of the point of interest
-    # A Node object representing the nearest node to the point of interest
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        self.xml_file_name = config['XML']['file_path']
 
-    sql = 'SELECT name, ST_AsText(coordinates), nearest_node ' \
-          'FROM point_of_interest ' \
-          'WHERE id =' + str(poi_id) + ';'
+    def get_plant_attributes(self, name_num):
 
-    row = _execute_query_one(cnx, sql)
+        found = False
 
-    # Get the full details of the nearest node
-    nearest_node = get_node_details(cnx, row[2])
+        for event, elem in etree.iterparse(self.xml_file_name, events=("start", "end")):
 
-    point_of_int = Node.from_point_string(row[1])
-    point_of_int.name = row[0]
+            if event == "start" and elem.tag == 'EntityDetailsItems':
 
-    return point_of_int, nearest_node
+                plant_elem = elem
 
+                # Start of a plant - check relevant attributes
 
-def get_graph(cnx):
+                if plant_elem.attrib['Name_Num'] == str(name_num):
 
-    import networkx as nx
-
-    # Populates a NetworkX Graph object using the edge database table
-    # Arguments:
-    # cnx - a database connection object
-    # Returns - a NetworkX Graph object populated with nodes and edges
-
-    cursor = cnx.cursor()
-
-    query = 'SELECT node1, node2, weight ' \
-            'FROM edge'
-
-    cursor.execute(query)
-
-    G = nx.Graph()
-
-    for node1, node2, weight in cursor:
-        G.add_edge(node1, node2, weight=weight)
-
-    cursor.close()
-
-    return G
-
-
-def get_bed_centre(cnx, bed_id):
-
-    # Gets the mathematical centroid of the flower bed with id = bed_id
-    # Arguments:
-    # cnx - a database connection object
-    # bed_id - id of the flower bed in question
-    # Returns - a Node object representing the centroid of the flower bed polygon
-
-    sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
-          'FROM flower_bed ' \
-          'WHERE id = ' + str(bed_id)
-
-    row = _execute_query_one(cnx, sql)
-
-    bed_centre = Node.from_point_string(row[0])
-
-    bed_centre.name = 'Centre bed ' + str(bed_id)
-
-    return bed_centre
-
-
-def get_plant_name_num(common_name):
-
-    import lxml.etree as etree
-    import configparser
-
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    xml_file_name = config['XML']['file_path']
-
-    plant_name_num = ''
-
-    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
-        if event == "start":
-            if elem.tag == 'EntityDetailsItems':
-                if elem.attrib['PreferredCommonName'] == common_name:
-                    plant_name_num = elem.attrib['Name_Num']
-                    break
-
-        elem.clear()
-
-    return plant_name_num
-
-
-def get_plant_attributes(pref_common_name):
-
-    # Populates and returns a plant object for the given (exact) pref_common_name
-    # Arguments:
-    # pref_common_name - preferred common name (string)
-    # Returns - a Plant object populated with available attributes
-
-    import lxml.etree as etree
-    import configparser
-
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    xml_file_name = config['XML']['file_path']
-
-    plant = Plant()
-
-    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
-
-        if event == "start" and elem.tag == 'EntityDetailsItems':
-            # Start of a plant - check if correct one then populate object with attributes
-            if elem.attrib['PreferredCommonName'] == pref_common_name:
-                plant.populate_xml(elem)
-
-        elif event == 'end':
-
-            # Add any common names or synonyms to the plant object
-            if (elem.tag == 'CommonName' or elem.tag == 'Synonyms') and plant.common_name == pref_common_name:
+                    found = True
+                    plant = Plant()
+                    plant.populate_xml(plant_elem)
 
                     if elem.tag == 'CommonName' and elem.text:
                         plant.common_names.append(elem.text)
                     elif elem.tag == 'Synonyms' and elem.text:
                         plant.synonyms.append(elem.text)
 
-            elif elem.tag == 'EntityDetailsItems':
+                elif elem.tag == 'EntityDetailsItems':
 
-                # Plant finished - delete extra synonym caused by extra XML tag, then break
-                if plant.common_name == pref_common_name:
-                    elem.clear()
-                    if plant.synonyms:
-                        del plant.synonyms[-1]
+                    # End of a plant
+                    # Break if we have enough records, else reset found
+                    if found:
+                        if plant.synonyms:
+                            # Delete extra synonym generated by extra XML tag
+                            del plant.synonyms[-1]
+
                         break
 
-            # Clear element when finished with it to save memory
-            elem.clear()
+                # Clear the element to save memory
+                elem.clear()
+                plant_elem.clear()
 
-    return plant
+        return plant
 
+    def get_plants(self, search_string, n):
+        # Examines the PreferredCommonName, AcceptedBotanicalName, CommonName and Synonyms fields for the search string
+        # and returns a list of n Plant objects populated with the attributes of the first n matches
+        # Arguments:
+        # search_string - string to be matched
+        # n - maximum required number of plants, 0 returns all
+        # Returns - A list of max n Plant objects, populated with attributes
 
-def get_plants(search_string, n):
+        s = search_string.lower()
+        plants = []
+        found = False
 
-    # Examines the PreferredCommonName, AcceptedBotanicalName, CommonName and Synonyms fields for the search string
-    # and returns a list of n Plant objects populated with the attributes of the first n matches
-    # Arguments:
-    # search_string - string to be matched
-    # n - maximum required number of plants, 0 returns all
-    # Returns - A list of max n Plant objects, populated with attributes
+        for event, elem in etree.iterparse(self.xml_file_name, events=("start", "end")):
 
-    import lxml.etree as etree
-    import configparser
-
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    xml_file_name = config['XML']['file_path']
-
-    s = search_string.lower()
-    plants = []
-    found = False
-
-    for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
-
-        if event == "start" and elem.tag == 'EntityDetailsItems':
+            if event == "start" and elem.tag == 'EntityDetailsItems':
 
                 plant_elem = elem
 
@@ -222,228 +78,462 @@ def get_plants(search_string, n):
 
                 if s in plant_elem.attrib['PreferredCommonName'].lower() or \
                         s in plant_elem.attrib['AcceptedBotanicalName'].lower():
-
                     plant = Plant()
                     plant.populate_xml(plant_elem)
 
                     found = True
 
-        elif event == 'end':
+            elif event == 'end':
 
-            if elem.tag == 'CommonName' or elem.tag == 'Synonyms':
+                if elem.tag == 'CommonName' or elem.tag == 'Synonyms':
 
-                # Only check common names and synonyms if attributes didn't match
-                if not found:
-                     if elem.text:
-                        if s in elem.text.lower():
-                            plant = Plant()
-                            plant.populate_xml(plant_elem)
-                            found = True
+                    # Only check common names and synonyms if attributes didn't match
+                    if not found:
+                        if elem.text:
+                            if s in elem.text.lower():
+                                plant = Plant()
+                                plant.populate_xml(plant_elem)
+                                found = True
 
-                # If plant has been stored, add any common names and synonyms
-                if found:
-                    if elem.tag =='CommonName' and elem.text:
-                        plant.common_names.append(elem.text)
-                    elif elem.tag == 'Synonyms' and elem.text:
-                        plant.synonyms.append(elem.text)
+                    # If plant has been stored, add any common names and synonyms
+                    if found:
+                        if elem.tag == 'CommonName' and elem.text:
+                            plant.common_names.append(elem.text)
+                        elif elem.tag == 'Synonyms' and elem.text:
+                            plant.synonyms.append(elem.text)
 
-            elif elem.tag == 'EntityDetailsItems':
+                elif elem.tag == 'EntityDetailsItems':
 
-                # End of a plant
-                # Break if we have enough records, else reset found
-                if found:
-                    if plant.synonyms:
-                        # Delete extra synonym generated by extra XML tag
-                        del plant.synonyms[-1]
+                    # End of a plant
+                    # Break if we have enough records, else reset found
+                    if found:
+                        if plant.synonyms:
+                            # Delete extra synonym generated by extra XML tag
+                            del plant.synonyms[-1]
 
-                    plants.append(plant)
+                        plants.append(plant)
 
-                    if (len(plants) >= int(n)) and (n != '0'):
-                        break
-                    else:
-                        found = False
+                        if (len(plants) >= int(n)) and (n != '0'):
+                            break
+                        else:
+                            found = False
 
-            # Clear the element to save memory
-            elem.clear()
-            plant_elem.clear()
+                # Clear the element to save memory
+                elem.clear()
+                plant_elem.clear()
 
-    return plants
+        return plants
 
 
-def get_points_of_interest(cnx, location, n):
+class DAO_Basics(object):
 
-    # Gets the n closest points of interest to location, sorted by distance from location
-    # Arguments:
-    # cnx - a database connection object
-    # location - a Node object with the current location
-    # n - the number of points of interest to be returned (0 returns all)
-    # Returns - a list of Node objects representing points of interest
+    def __init__(self, location):
 
-    cursor = cnx.cursor()
+        config = configparser.ConfigParser()
+        config.read('config.ini')
 
-    sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + location.point_str() + ', coordinates) AS dist ' \
-          'FROM point_of_interest ' \
-          'ORDER BY dist'
+        user = config['MySql']['user']
+        host = config['MySql']['host']
+        database = config['MySql']['database']
 
-    # Limit query to n rows if required
-    if n != '0':
-        sql += ' LIMIT '
-        sql += n
+        self.cnx = mysql.connector.connect(user=user, host=host, database=database)
+        self.location = location
 
-    sql += ';'
+    def db_close(self):
 
-    cursor.execute(sql)
+        # Arguments:
+        # cnx - connection object
+        # Returns - Nothing
 
-    points_of_int = []
+        self.cnx.close()
 
-    # Copy points of interest to Node object and append to list
-    for row in cursor:
+        return
 
-        node = Node.from_point_string(row[1])
+    def execute_query_one(self, sql):
 
-        node.id = row[0]
-        node.name = row[2]
+        # Returns first result for query defined in sql parameter
+        # Arguments:
+        # sql - string containing SQL query
+        # Returns - a row tuple representing the first row from the query
 
-        points_of_int.append(node)
+        cursor = self.cnx.cursor()
 
-    cursor.close()
+        cursor.execute(sql)
 
-    return points_of_int
+        row = cursor.fetchone()
 
+        cursor.close()
 
-def get_flower_beds(cnx, location, plant, n):
+        return row
 
-    # Gets the n closest flower beds to location which contain plant, sorted by distance from location
-    # Arguments:
-    # cnx - a database connection object
-    # location - a Node object with the current location
-    # n - the number of points of interest to be returned (0 returns all)
-    # Returns - a list of Node objects representing points of interest
+    def get_node_details(self, node_id):
+        # Gets full details from node table for id = node_id
+        # Arguments:
+        # cnx - a database connection object
+        # node_id - a node id
+        # Returns - a Node object populated with full node details
 
-    cursor = cnx.cursor()
+        sql = 'SELECT id, ST_AsText(coordinates), name ' \
+              'FROM node ' \
+              'WHERE id = ' + str(node_id)
 
-    sql = 'SELECT pb.bed_id, ST_Distance(' + location.point_str() + ', fb.polygon) AS dist, ' \
-                                                                    'ST_AsText(ST_Centroid(polygon)) ' \
-          'FROM plant_bed pb ' \
-          'JOIN flower_bed fb ' \
-          'ON pb.bed_id = fb.id ' \
-          'WHERE pb.plant_id =' + plant + ' ' \
-          'ORDER BY dist'
+        row = self.execute_query_one(sql)
 
-    # Limit query to n rows if required
-    if n != '0':
-        sql += ' LIMIT '
-        sql += n
+        return Node.from_db_row(row)
 
-    sql += ';'
+    def get_bed_centre(self, bed_id):
 
-    cursor.execute(sql)
+        # Gets the mathematical centroid of the flower bed with id = bed_id
+        # Arguments:
+        # cnx - a database connection object
+        # bed_id - id of the flower bed in question
+        # Returns - a Node object representing the centroid of the flower bed polygon
 
-    flower_beds = []
+        sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
+              'FROM flower_bed ' \
+              'WHERE id = ' + str(bed_id)
 
-    # Copy flower bed to Node object and append to list
-    for row in cursor:
+        row = self.execute_query_one(sql)
 
-        node = Node.from_point_string(row[2])
+        bed_centre = Node.from_point_string(row[0])
 
-        node.id = row[0]
-        node.name = 'Flower Bed ' + str(node.id)
+        bed_centre.id = bed_id
+        bed_centre.name = 'Centre bed ' + str(bed_id)
 
-        flower_beds.append(node)
+        return bed_centre
 
-    cursor.close()
+    def get_place(self, place_id):
 
-    return flower_beds
+        # Gets the mathematical centroid of the flower bed with id = bed_id
+        # Arguments:
+        # cnx - a database connection object
+        # bed_id - id of the flower bed in question
+        # Returns - a Node object representing the centroid of the flower bed polygon
 
+        sql = 'SELECT name, ST_AsText(coordinates), description ' \
+              'FROM place ' \
+              'WHERE id = ' + str(place_id)
 
-def get_node_details(cnx, node_id):
+        row = self.execute_query_one(sql)
 
-    # Gets full details from node table for id = node_id
-    # Arguments:
-    # cnx - a database connection object
-    # node_id - a node id
-    # Returns - a Node object populated with full node details
+        place = Place.from_point_string(row[1])
 
-    sql = 'SELECT id, ST_AsText(coordinates), name ' \
-          'FROM node ' \
-          'WHERE id = ' + str(node_id)
+        place.id = place_id
+        place.name = row[0]
+        place.description = row[2]
 
-    row = _execute_query_one(cnx, sql)
+        return place
 
-    return Node.from_db_row(row)
 
+class DAO_GIS(DAO_Basics):
 
-def get_directions(cnx, node1, node2):
+    def __init__(self, location):
 
-    # Gets directions from node1 --> node2
-    # Arguments:
-    # node1 - id of origin node
-    # node2 - id of destination node
-    # Returns a populated Direction object
+        DAO_Basics.__init__(self, location)
 
-    # Edges are stored such that node1 < node2, swap nodes over if needed
+    def get_flower_beds(self, plant, n):
 
-    if node1 < node2:
-        query_node1 = node1
-        query_node2 = node2
-        column = 'direction_1_to_2'
-    else:
-        query_node1 = node2
-        query_node2 = node1
-        column = 'direction_2_to_1'
+        # Gets the n closest flower beds to location which contain plant, sorted by distance from location
+        # Arguments:
+        # cnx - a database connection object
+        # location - a Node object with the current location
+        # n - the number of points of interest to be returned (0 returns all)
+        # Returns - a list of Node objects representing points of interest
 
-    sql = 'SELECT ' + column + ', weight ' \
-          'FROM edge ' \
-          'WHERE node1 = ' + str(query_node1) + ' AND node2 = ' + str(query_node2)
+        cursor = self.cnx.cursor()
 
-    row = _execute_query_one(cnx, sql)
+        sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist, ' \
+                                                                        'ST_AsText(ST_Centroid(polygon)) ' \
+                                                                        'FROM plant_bed pb ' \
+                                                                        'JOIN flower_bed fb ' \
+                                                                        'ON pb.bed_id = fb.id ' \
+                                                                        'WHERE pb.plant_id =' + plant + ' ' \
+                                                                                                        'ORDER BY dist'
 
-    return Direction(node1, node2, row[1], row[0])
+        # Limit query to n rows if required
+        if n != '0':
+            sql += ' LIMIT '
+            sql += n
 
+        sql += ';'
 
-def db_connect():
+        cursor.execute(sql)
 
-    import configparser
+        flower_beds = []
 
-    # Arguments - None
-    # Returns connection object
+        # Copy flower bed to Node object and append to list
+        for row in cursor:
+            node = Node.from_point_string(row[2])
 
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+            node.id = row[0]
+            node.name = 'Flower Bed ' + str(node.id)
 
-    user = config['MySql']['user']
-    host = config['MySql']['host']
-    database = config['MySql']['database']
+            flower_beds.append(node)
 
-    cnx = mysql.connector.connect(user=user, host=host, database=database)
+        cursor.close()
 
-    return cnx
+        return flower_beds
 
+    def get_places(self, n):
 
-def db_close(cnx):
+        # Gets the n closest points of interest to location, sorted by distance from location
+        # Arguments:
+        # cnx - a database connection object
+        # location - a Node object with the current location
+        # n - the number of points of interest to be returned (0 returns all)
+        # Returns - a list of Node objects representing points of interest
 
-    # Arguments:
-    # cnx - connection object
-    # Returns - Nothing
+        cursor = self.cnx.cursor()
 
-    cnx.close()
+        sql = 'SELECT id, ST_AsText(coordinates), name, description, ST_Distance(' + self.location.point_str() + ', coordinates) ' \
+              'AS dist ' \
+              'FROM place ' \
+              'ORDER BY dist'
 
-    return
+        # Limit query to n rows if required
+        if n != '0':
+            sql += ' LIMIT '
+            sql += n
 
+        sql += ';'
 
-def _execute_query_one(cnx, sql):
+        cursor.execute(sql)
 
-    # Returns first result for query defined in sql parameter
-    # Arguments:
-    # sql - string containing SQL query
-    # Returns - a row tuple representing the first row from the query
+        places = []
 
-    cursor = cnx.cursor()
+        # Copy points of interest to Node object and append to list
+        for row in cursor:
 
-    cursor.execute(sql)
+            place = Place.from_point_string(row[1])
+            place.id = row[0]
+            place.name = row[2]
+            place.description = row[3]
 
-    row = cursor.fetchone()
+            places.append(place)
 
-    cursor.close()
+        cursor.close()
 
-    return row
+        return places
+
+    def get_seasonal_plants(self, month, n):
+
+        cursor = self.cnx.cursor()
+
+        sql = 'SELECT plant_id ' \
+                'FROM plant_month ' \
+                'WHERE month_id = ' + str(month)
+
+        # Limit query to n rows if required
+        if n != '0':
+            sql += ' LIMIT '
+            sql += n
+
+        sql += ';'
+
+        cursor.execute(sql)
+
+        plant_db = DAO_Plants()
+        plants = []
+
+        for row in cursor:
+            plants.append(plant_db.get_plant_attributes(row[0]))
+
+        cursor.close()
+
+        return plants
+
+    def get_seasonal_plants_near_me(self, month, n):
+
+        cursor = self.cnx.cursor()
+
+        sql = 'SELECT pm.plant_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist ' \
+              'FROM plant_month pm ' \
+              'JOIN plant_bed pb ' \
+              'ON pm.plant_id = pb.plant_id ' \
+              'JOIN flower_bed fb ' \
+              'ON pb.bed_id = fb.id ' \
+              'WHERE month_id = ' + str(month) + ' ' \
+              'ORDER BY dist'
+
+        # Limit query to n rows if required
+        if n != '0':
+            sql += ' LIMIT '
+            sql += n
+
+        sql += ';'
+
+        cursor.execute(sql)
+
+        plant_db = DAO_Plants()
+        plants = []
+
+        for row in cursor:
+            plants.append(plant_db.get_plant_attributes(row[0]))
+
+        cursor.close()
+
+        return plants
+
+
+class DAO_Route(DAO_Basics):
+
+    def __init__(self, location):
+
+        DAO_Basics.__init__(self, location)
+
+    def get_graph(self):
+
+        import networkx as nx
+
+        # Populates a NetworkX Graph object using the edge database table
+        # Arguments:
+        # cnx - a database connection object
+        # Returns - a NetworkX Graph object populated with nodes and edges
+
+        cursor = self.cnx.cursor()
+
+        query = 'SELECT node1, node2, weight ' \
+                'FROM edge'
+
+        cursor.execute(query)
+
+        G = nx.Graph()
+
+        for node1, node2, weight in cursor:
+            G.add_edge(node1, node2, weight=weight)
+
+        cursor.close()
+
+        return G
+
+    def find_nearest_node(self):
+
+        # Finds the node nearest to location
+        # Arguments:
+        # cnx - a database connection object
+        # location - a Node object
+        # Returns - a Node object representing the closest node to location
+
+        sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + self.location.point_str() + ', coordinates) ' \
+              'AS dist ' \
+              'FROM node ' \
+              'ORDER BY dist ' \
+              'LIMIT 1;'
+
+        row = self.execute_query_one(sql)
+
+        return Node.from_db_row(row)
+
+    def find_nearest_place_node(self, place_id):
+
+        # Finds the closest node to poi_id, and also gets details of the point of interest
+        # Arguments:
+        # cnx - a database connection object
+        # poi_id - the id of the point of interest
+        # Returns:
+        # A Node object representing the location of the point of interest
+        # A Node object representing the nearest node to the point of interest
+
+        sql = 'SELECT nearest_node ' \
+              'FROM place ' \
+              'WHERE id =' + str(place_id) + ';'
+
+        row = self.execute_query_one(sql)
+
+        return row[0]
+
+    def find_nearest_bed_node(self, bed_id):
+
+        # Finds the closest node to poi_id, and also gets details of the point of interest
+        # Arguments:
+        # cnx - a database connection object
+        # poi_id - the id of the point of interest
+        # Returns:
+        # A Node object representing the location of the point of interest
+        # A Node object representing the nearest node to the point of interest
+
+        sql = 'SELECT nearest_node ' \
+              'FROM flower_bed ' \
+              'WHERE id =' + str(bed_id) + ';'
+
+        row = self.execute_query_one(sql)
+
+        return row[0]
+
+    def get_directions(self, node1, node2):
+
+        # Gets directions from node1 --> node2
+        # Arguments:
+        # node1 - id of origin node
+        # node2 - id of destination node
+        # Returns a populated Direction object
+
+        # Edges are stored such that node1 < node2, swap nodes over if needed
+
+        if node1 < node2:
+            query_node1 = node1
+            query_node2 = node2
+            column = 'direction_1_to_2'
+        else:
+            query_node1 = node2
+            query_node2 = node1
+            column = 'direction_2_to_1'
+
+        sql = 'SELECT ' + column + ', weight ' \
+              'FROM edge ' \
+              'WHERE node1 = ' + str(query_node1) + ' AND node2 = ' + str(query_node2)
+
+        row = self.execute_query_one(sql)
+
+        return Direction(node1, node2, row[1], row[0])
+
+#
+#
+# def get_plant_attributes(pref_common_name):
+#
+#     # Populates and returns a plant object for the given (exact) pref_common_name
+#     # Arguments:
+#     # pref_common_name - preferred common name (string)
+#     # Returns - a Plant object populated with available attributes
+#
+#     import lxml.etree as etree
+#     import configparser
+#
+#     config = configparser.ConfigParser()
+#     config.read('config.ini')
+#     xml_file_name = config['XML']['file_path']
+#
+#     plant = Plant()
+#
+#     for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
+#
+#         if event == "start" and elem.tag == 'EntityDetailsItems':
+#             # Start of a plant - check if correct one then populate object with attributes
+#             if elem.attrib['PreferredCommonName'] == pref_common_name:
+#                 plant.populate_xml(elem)
+#
+#         elif event == 'end':
+#
+#             # Add any common names or synonyms to the plant object
+#             if (elem.tag == 'CommonName' or elem.tag == 'Synonyms') and plant.common_name == pref_common_name:
+#
+#                     if elem.tag == 'CommonName' and elem.text:
+#                         plant.common_names.append(elem.text)
+#                     elif elem.tag == 'Synonyms' and elem.text:
+#                         plant.synonyms.append(elem.text)
+#
+#             elif elem.tag == 'EntityDetailsItems':
+#
+#                 # Plant finished - delete extra synonym caused by extra XML tag, then break
+#                 if plant.common_name == pref_common_name:
+#                     elem.clear()
+#                     if plant.synonyms:
+#                         del plant.synonyms[-1]
+#                         break
+#
+#             # Clear element when finished with it to save memory
+#             elem.clear()
+#
+#     return plant
+
+
