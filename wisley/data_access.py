@@ -1,22 +1,31 @@
-import mysql.connector
 from wisley.models import Node
 from wisley.models import Place
 from wisley.models import Plant
 from wisley.models import Direction
-import lxml.etree as etree
+
 import configparser
 
 
 class DAO_Plants(object):
 
 
+    # Data access class for extracting plant info from XML.  Does not deal with RDBMS.
+
     def __init__(self):
 
+        # Read in configuration file and set up xml file name
         config = configparser.ConfigParser()
         config.read('config.ini')
         self.xml_file_name = config['XML']['file_path']
 
     def get_plant_attributes(self, name_num):
+
+        import lxml.etree as etree
+
+        # Searches XML for exact match on name_num and returns fully populated Plant object
+        # Arguments:
+        # name_num - plant name_num to be found
+        # Returns - A Plant objects populated with attributes
 
         found = False
 
@@ -57,6 +66,9 @@ class DAO_Plants(object):
         return plant
 
     def get_plants(self, search_string, n):
+
+        import lxml.etree as etree
+
         # Examines the PreferredCommonName, AcceptedBotanicalName, CommonName and Synonyms fields for the search string
         # and returns a list of n Plant objects populated with the attributes of the first n matches
         # Arguments:
@@ -127,8 +139,14 @@ class DAO_Plants(object):
 
 class DAO_Basics(object):
 
+    # Base class for all DAO classes that interact with RDBMS
+
     def __init__(self, location):
 
+        import mysql.connector
+
+        # Read db details for configuration file and establish connection to database.
+        # Set up location attribute
         config = configparser.ConfigParser()
         config.read('config.ini')
 
@@ -141,15 +159,13 @@ class DAO_Basics(object):
 
     def db_close(self):
 
-        # Arguments:
-        # cnx - connection object
-        # Returns - Nothing
+        # Close database connection
 
         self.cnx.close()
 
         return
 
-    def execute_query_one(self, sql):
+    def _execute_query_one(self, sql):
 
         # Returns first result for query defined in sql parameter
         # Arguments:
@@ -167,9 +183,9 @@ class DAO_Basics(object):
         return row
 
     def get_node_details(self, node_id):
+
         # Gets full details from node table for id = node_id
         # Arguments:
-        # cnx - a database connection object
         # node_id - a node id
         # Returns - a Node object populated with full node details
 
@@ -177,7 +193,7 @@ class DAO_Basics(object):
               'FROM node ' \
               'WHERE id = ' + str(node_id)
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         return Node.from_db_row(row)
 
@@ -185,7 +201,6 @@ class DAO_Basics(object):
 
         # Gets the mathematical centroid of the flower bed with id = bed_id
         # Arguments:
-        # cnx - a database connection object
         # bed_id - id of the flower bed in question
         # Returns - a Node object representing the centroid of the flower bed polygon
 
@@ -193,7 +208,7 @@ class DAO_Basics(object):
               'FROM flower_bed ' \
               'WHERE id = ' + str(bed_id)
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         bed_centre = Node.from_point_string(row[0])
 
@@ -204,17 +219,16 @@ class DAO_Basics(object):
 
     def get_place(self, place_id):
 
-        # Gets the mathematical centroid of the flower bed with id = bed_id
+        # Gets full details from place table for id = place_id
         # Arguments:
-        # cnx - a database connection object
-        # bed_id - id of the flower bed in question
-        # Returns - a Node object representing the centroid of the flower bed polygon
+        # place_id - a place id
+        # Returns - a Place object populated with full place details
 
         sql = 'SELECT name, ST_AsText(coordinates), description ' \
               'FROM place ' \
               'WHERE id = ' + str(place_id)
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         place = Place.from_point_string(row[1])
 
@@ -227,28 +241,29 @@ class DAO_Basics(object):
 
 class DAO_GIS(DAO_Basics):
 
+    # Data access class for executing spatial queries, inherits from DAO_Basics
+
     def __init__(self, location):
 
+        # Call superclass constructor to set up DB connection
         DAO_Basics.__init__(self, location)
 
     def get_flower_beds(self, plant, n):
 
         # Gets the n closest flower beds to location which contain plant, sorted by distance from location
         # Arguments:
-        # cnx - a database connection object
-        # location - a Node object with the current location
         # n - the number of points of interest to be returned (0 returns all)
-        # Returns - a list of Node objects representing points of interest
+        # Returns - a list of Node objects representing flower beds
 
         cursor = self.cnx.cursor()
 
         sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist, ' \
-                                                                        'ST_AsText(ST_Centroid(polygon)) ' \
-                                                                        'FROM plant_bed pb ' \
-                                                                        'JOIN flower_bed fb ' \
-                                                                        'ON pb.bed_id = fb.id ' \
-                                                                        'WHERE pb.plant_id =' + plant + ' ' \
-                                                                                                        'ORDER BY dist'
+              'ST_AsText(ST_Centroid(polygon)) ' \
+              'FROM plant_bed pb ' \
+              'JOIN flower_bed fb ' \
+              'ON pb.bed_id = fb.id ' \
+              'WHERE pb.plant_id =' + str(plant) + ' ' \
+              'ORDER BY dist'
 
         # Limit query to n rows if required
         if n != '0':
@@ -263,12 +278,12 @@ class DAO_GIS(DAO_Basics):
 
         # Copy flower bed to Node object and append to list
         for row in cursor:
-            node = Node.from_point_string(row[2])
 
-            node.id = row[0]
-            node.name = 'Flower Bed ' + str(node.id)
+            bed = Node.from_point_string(row[2])
+            bed.id = row[0]
+            bed.name = 'Flower Bed ' + str(bed.id)
 
-            flower_beds.append(node)
+            flower_beds.append(bed)
 
         cursor.close()
 
@@ -276,16 +291,15 @@ class DAO_GIS(DAO_Basics):
 
     def get_places(self, n):
 
-        # Gets the n closest points of interest to location, sorted by distance from location
+        # Gets the n closest places to location, sorted by distance from location
         # Arguments:
-        # cnx - a database connection object
-        # location - a Node object with the current location
-        # n - the number of points of interest to be returned (0 returns all)
-        # Returns - a list of Node objects representing points of interest
+        # n - the number of places to be returned (0 returns all)
+        # Returns - a list of Place objects representing places
 
         cursor = self.cnx.cursor()
 
-        sql = 'SELECT id, ST_AsText(coordinates), name, description, ST_Distance(' + self.location.point_str() + ', coordinates) ' \
+        sql = 'SELECT id, ST_AsText(coordinates), name, description, ' \
+              'ST_Distance(' + self.location.point_str() + ', coordinates) ' \
               'AS dist ' \
               'FROM place ' \
               'ORDER BY dist'
@@ -317,11 +331,17 @@ class DAO_GIS(DAO_Basics):
 
     def get_seasonal_plants(self, month, n):
 
+        # Gets the first n plants of seasonal interest in given month
+        # Arguments:
+        # n - the number of plants to be returned (0 returns all)
+        # Returns - a list of populated Plant objects
+        # Note this query is not spatial but is in this class because it requires a db connection
+
         cursor = self.cnx.cursor()
 
         sql = 'SELECT plant_id ' \
-                'FROM plant_month ' \
-                'WHERE month_id = ' + str(month)
+              'FROM plant_month ' \
+              'WHERE month_id = ' + str(month)
 
         # Limit query to n rows if required
         if n != '0':
@@ -332,42 +352,12 @@ class DAO_GIS(DAO_Basics):
 
         cursor.execute(sql)
 
+        # Need Plant DAO to get plant attributes
         plant_db = DAO_Plants()
         plants = []
 
         for row in cursor:
-            plants.append(plant_db.get_plant_attributes(row[0]))
 
-        cursor.close()
-
-        return plants
-
-    def get_seasonal_plants_near_me(self, month, n):
-
-        cursor = self.cnx.cursor()
-
-        sql = 'SELECT pm.plant_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist ' \
-              'FROM plant_month pm ' \
-              'JOIN plant_bed pb ' \
-              'ON pm.plant_id = pb.plant_id ' \
-              'JOIN flower_bed fb ' \
-              'ON pb.bed_id = fb.id ' \
-              'WHERE month_id = ' + str(month) + ' ' \
-              'ORDER BY dist'
-
-        # Limit query to n rows if required
-        if n != '0':
-            sql += ' LIMIT '
-            sql += n
-
-        sql += ';'
-
-        cursor.execute(sql)
-
-        plant_db = DAO_Plants()
-        plants = []
-
-        for row in cursor:
             plants.append(plant_db.get_plant_attributes(row[0]))
 
         cursor.close()
@@ -377,7 +367,11 @@ class DAO_GIS(DAO_Basics):
 
 class DAO_Route(DAO_Basics):
 
+    # Data access class for executing routing queries, inherits from DAO_Basics
+
     def __init__(self, location):
+
+        # Call superclass constructor to set up DB connection
 
         DAO_Basics.__init__(self, location)
 
@@ -387,7 +381,6 @@ class DAO_Route(DAO_Basics):
 
         # Populates a NetworkX Graph object using the edge database table
         # Arguments:
-        # cnx - a database connection object
         # Returns - a NetworkX Graph object populated with nodes and edges
 
         cursor = self.cnx.cursor()
@@ -410,8 +403,6 @@ class DAO_Route(DAO_Basics):
 
         # Finds the node nearest to location
         # Arguments:
-        # cnx - a database connection object
-        # location - a Node object
         # Returns - a Node object representing the closest node to location
 
         sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + self.location.point_str() + ', coordinates) ' \
@@ -420,43 +411,39 @@ class DAO_Route(DAO_Basics):
               'ORDER BY dist ' \
               'LIMIT 1;'
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         return Node.from_db_row(row)
 
-    def find_nearest_place_node(self, place_id):
+    def find_nearest_place_node_id(self, place_id):
 
-        # Finds the closest node to poi_id, and also gets details of the point of interest
+        # Finds the id of the closest node to place_id
         # Arguments:
-        # cnx - a database connection object
-        # poi_id - the id of the point of interest
+        # place_id - the id of the place
         # Returns:
-        # A Node object representing the location of the point of interest
-        # A Node object representing the nearest node to the point of interest
+        # The id of the closest node to the given place
 
         sql = 'SELECT nearest_node ' \
               'FROM place ' \
               'WHERE id =' + str(place_id) + ';'
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         return row[0]
 
-    def find_nearest_bed_node(self, bed_id):
+    def find_nearest_bed_node_id(self, bed_id):
 
-        # Finds the closest node to poi_id, and also gets details of the point of interest
+        # Finds the id of the closest node to bed_id
         # Arguments:
-        # cnx - a database connection object
-        # poi_id - the id of the point of interest
+        # bed_id - the id of the flower bed
         # Returns:
-        # A Node object representing the location of the point of interest
-        # A Node object representing the nearest node to the point of interest
+        # The id of the closest node to the given flower bed
 
         sql = 'SELECT nearest_node ' \
               'FROM flower_bed ' \
               'WHERE id =' + str(bed_id) + ';'
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         return row[0]
 
@@ -483,57 +470,6 @@ class DAO_Route(DAO_Basics):
               'FROM edge ' \
               'WHERE node1 = ' + str(query_node1) + ' AND node2 = ' + str(query_node2)
 
-        row = self.execute_query_one(sql)
+        row = self._execute_query_one(sql)
 
         return Direction(node1, node2, row[1], row[0])
-
-#
-#
-# def get_plant_attributes(pref_common_name):
-#
-#     # Populates and returns a plant object for the given (exact) pref_common_name
-#     # Arguments:
-#     # pref_common_name - preferred common name (string)
-#     # Returns - a Plant object populated with available attributes
-#
-#     import lxml.etree as etree
-#     import configparser
-#
-#     config = configparser.ConfigParser()
-#     config.read('config.ini')
-#     xml_file_name = config['XML']['file_path']
-#
-#     plant = Plant()
-#
-#     for event, elem in etree.iterparse(xml_file_name, events=("start", "end")):
-#
-#         if event == "start" and elem.tag == 'EntityDetailsItems':
-#             # Start of a plant - check if correct one then populate object with attributes
-#             if elem.attrib['PreferredCommonName'] == pref_common_name:
-#                 plant.populate_xml(elem)
-#
-#         elif event == 'end':
-#
-#             # Add any common names or synonyms to the plant object
-#             if (elem.tag == 'CommonName' or elem.tag == 'Synonyms') and plant.common_name == pref_common_name:
-#
-#                     if elem.tag == 'CommonName' and elem.text:
-#                         plant.common_names.append(elem.text)
-#                     elif elem.tag == 'Synonyms' and elem.text:
-#                         plant.synonyms.append(elem.text)
-#
-#             elif elem.tag == 'EntityDetailsItems':
-#
-#                 # Plant finished - delete extra synonym caused by extra XML tag, then break
-#                 if plant.common_name == pref_common_name:
-#                     elem.clear()
-#                     if plant.synonyms:
-#                         del plant.synonyms[-1]
-#                         break
-#
-#             # Clear element when finished with it to save memory
-#             elem.clear()
-#
-#     return plant
-
-

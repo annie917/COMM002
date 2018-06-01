@@ -1,5 +1,7 @@
 class Plant(object):
 
+    # Class for representing a plant record from XML
+
     def __init__(self):
 
 
@@ -62,6 +64,7 @@ class Node(object):
 
     # Represents a row in the node table.  Lat and long are stored as a POINT in db, but must be retrieved as strings
     # As the client will ultimately want them as strings, they are stored here as strings
+    # Also used to represent flower beds, with id = bed id, and lat and long being mathematical centroid of bed
 
     def __init__(self, id, long, lat, name):
 
@@ -90,7 +93,10 @@ class Node(object):
 
         return 'ST_PointFromText(\'POINT(' + self.long + ' ' + self.lat + ')\')'
 
+
 class Place(Node):
+
+    # Extension of Node to store a place
 
     def __init__(self, id, lat, long, name):
 
