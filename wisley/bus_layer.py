@@ -64,6 +64,16 @@ class BL_GIS(object):
 
         return plants
 
+    def get_bed_plants(self, id, n):
+
+        # Pass parameters to corresponding data layer method.
+        # Returns - a list of Plant Objects representing the n plant in bed with id,
+        # or an empty list if the bed was not found or was empty.
+
+        plants = self.db.get_bed_plants(id, n)
+
+        return plants
+
 
 class BL_Route(object):
 

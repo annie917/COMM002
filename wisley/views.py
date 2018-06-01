@@ -92,6 +92,49 @@ def plants_seasonal():
 
     return resp
 
+@app.route('/plants/bed')
+def plants_bed():
+
+    """@app.route('/plants/bed') takes
+    id (bed id, coercible to int)
+    n (max number of records required, coercible to int, n=0 returns all
+    Finds the first n plants in the given bed.
+    Returns a list of populated Plant objects.
+    If the bed is not found or is emmpty, an empty list is returned.  If n=0, all matches are returned."""
+
+    # Define validation schema
+
+    schema = Schema({
+        Required('id'): Coerce(int),
+        Required('n'): Coerce(int)
+    })
+
+    # Validate and return a Bad Request error if necessary
+    try:
+        schema(request.args.to_dict())
+
+    except MultipleInvalid as err:
+
+        resp = _handle_exception(err, '400')
+
+    else:
+
+        # Call business layer method and return an Internal Server Error if anything goes wrong
+        try:
+
+            # Does not require location, so set up BL with empty Node
+            bl = BL_GIS(Node(0,'','',''))
+
+            plants = bl.get_bed_plants(request.args['id'], request.args['n'])
+
+            resp = _get_response(plants)
+
+        except Exception as err:
+
+            resp = _handle_exception(err, '500')
+
+    return resp
+
 
 @app.route('/beds')
 def get_beds():

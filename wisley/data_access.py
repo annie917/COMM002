@@ -334,6 +334,7 @@ class DAO_GIS(DAO_Basics):
         # Gets the first n plants of seasonal interest in given month
         # Arguments:
         # n - the number of plants to be returned (0 returns all)
+        # month - an integer month when 1=January
         # Returns - a list of populated Plant objects
         # Note this query is not spatial but is in this class because it requires a db connection
 
@@ -342,6 +343,42 @@ class DAO_GIS(DAO_Basics):
         sql = 'SELECT plant_id ' \
               'FROM plant_month ' \
               'WHERE month_id = ' + str(month)
+
+        # Limit query to n rows if required
+        if n != '0':
+            sql += ' LIMIT '
+            sql += n
+
+        sql += ';'
+
+        cursor.execute(sql)
+
+        # Need Plant DAO to get plant attributes
+        plant_db = DAO_Plants()
+        plants = []
+
+        for row in cursor:
+
+            plants.append(plant_db.get_plant_attributes(row[0]))
+
+        cursor.close()
+
+        return plants
+
+    def get_bed_plants(self, id, n):
+
+        # Gets the first n plants in bed with bed_id=id
+        # Arguments:
+        # n - the number of plants to be returned (0 returns all)
+        # id - the id of the flower bed
+        # Returns - a list of populated Plant objects
+        # Note this query is not spatial but is in this class because it requires a db connection
+
+        cursor = self.cnx.cursor()
+
+        sql = 'SELECT plant_id ' \
+              'FROM plant_bed ' \
+              'WHERE bed_id = ' + str(id)
 
         # Limit query to n rows if required
         if n != '0':
