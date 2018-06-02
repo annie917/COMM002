@@ -126,4 +126,4 @@ class Direction(object):
         self.node1 = node1 # First node (id as int)
         self.node2 = node2 # Second node (id as int)
         self.length = length # Length of stage in metres
-        self.direction = direction # Direction node1 --> node2 (string)
+        self.instruction = direction # Direction node1 --> node2 (string)

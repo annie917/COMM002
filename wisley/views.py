@@ -41,7 +41,7 @@ def get_plants():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
             bl = BLO_Plants()
-            plants = bl.get_plant_list(request.args['name'], request.args['n'])
+            plants = bl.get_plants(request.args['name'], request.args['n'])
             resp = _get_response(plants)
 
         except Exception as err:
