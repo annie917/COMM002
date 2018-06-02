@@ -1,4 +1,4 @@
-class BL_Plants(object):
+class BLO_Plants(object):
 
     # Business logic class for dealing with the corresponding DAO_Plants data layer object.
     # Handles requests for list of plants that only involve the XML data source.
@@ -20,7 +20,7 @@ class BL_Plants(object):
         return plants
 
 
-class BL_PlantLists(object):
+class BLO_PlantLists(object):
 
     # Business logic class for dealing with the corresponding DAO_PlantLists data layer object.
     # Handles requests for lists of plants with no spatial component.
@@ -53,7 +53,7 @@ class BL_PlantLists(object):
         return plants
 
 
-class BL_GIS(object):
+class BLO_GIS(object):
 
     # Business logic class for dealing with the corresponding DAO_GIS data layer object.
     # Handles requests for lists of flower beds and places near a location.
@@ -88,7 +88,7 @@ class BL_GIS(object):
         return places
 
 
-class BL_Route(object):
+class BLO_Route(object):
 
     # Business logic class for dealing with the corresponding DAO_Route data layer object.
     # Handles requests for routes to flower beds and places.

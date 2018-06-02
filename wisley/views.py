@@ -2,10 +2,10 @@ from flask import Flask, request, make_response
 import jsonpickle
 from voluptuous import Schema, MultipleInvalid, Coerce, Required
 
-from wisley.bus_layer import BL_Plants
-from wisley.bus_layer import BL_PlantLists
-from wisley.bus_layer import BL_GIS
-from wisley.bus_layer import BL_Route
+from wisley.bus_layer import BLO_Plants
+from wisley.bus_layer import BLO_PlantLists
+from wisley.bus_layer import BLO_GIS
+from wisley.bus_layer import BLO_Route
 from wisley.models import Node
 
 
@@ -40,7 +40,7 @@ def get_plants():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BL_Plants()
+            bl = BLO_Plants()
             plants = bl.get_plant_list(request.args['name'], request.args['n'])
             resp = _get_response(plants)
 
@@ -80,7 +80,7 @@ def plants_seasonal():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            bl = BL_PlantLists()
+            bl = BLO_PlantLists()
 
             plants = bl.get_seasonal_plants(request.args['month'], request.args['n'])
 
@@ -122,7 +122,7 @@ def plants_bed():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            bl = BL_PlantLists()
+            bl = BLO_PlantLists()
 
             plants = bl.get_bed_plants(request.args['id'], request.args['n'])
 
@@ -168,7 +168,7 @@ def get_beds():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BL_GIS(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_GIS(Node(0, request.args['long'], request.args['lat'], ''))
 
             beds = bl.get_flower_beds(request.args['name'], request.args['n'])
 
@@ -212,7 +212,7 @@ def get_places():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BL_GIS(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_GIS(Node(0, request.args['long'], request.args['lat'], ''))
 
             places = bl.get_places(request.args['n'])
 
@@ -256,7 +256,7 @@ def route_bed():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BL_Route(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_Route(Node(0, request.args['long'], request.args['lat'], ''))
 
             route = bl.get_bed_route(request.args['id'])
 
@@ -301,7 +301,7 @@ def route_place():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            bl = BL_Route(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_Route(Node(0, request.args['long'], request.args['lat'], ''))
 
             route = bl.get_place_route(request.args['id'])
 
