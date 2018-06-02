@@ -20,10 +20,43 @@ class BL_Plants(object):
         return plants
 
 
+class BL_PlantLists(object):
+
+    # Business logic class for dealing with the corresponding DAO_PlantLists data layer object.
+    # Handles requests for lists of plants with no spatial component.
+
+    def __init__(self):
+
+        from wisley.data_access import DAO_PlantLists
+
+        # Set up a data access object and connect to db.
+        self.db = DAO_PlantLists()
+
+    def get_seasonal_plants(self, month, n):
+
+        # Pass parameters to corresponding data layer method.
+        # Returns - a list of Plant Objects representing the n seasonal plants,
+        # or an empty list if the plant was not found.
+
+        plants = self.db.get_seasonal_plants(month, n)
+
+        return plants
+
+    def get_bed_plants(self, id, n):
+
+        # Pass parameters to corresponding data layer method.
+        # Returns - a list of Plant Objects representing the n plant in bed with id,
+        # or an empty list if the bed was not found or was empty.
+
+        plants = self.db.get_bed_plants(id, n)
+
+        return plants
+
+
 class BL_GIS(object):
 
     # Business logic class for dealing with the corresponding DAO_GIS data layer object.
-    # Handles requests for lists of flower beds, places and seasonal plants.
+    # Handles requests for lists of flower beds and places near a location.
 
     def __init__(self, location):
 
@@ -53,26 +86,6 @@ class BL_GIS(object):
         self.db.db_close()
 
         return places
-
-    def get_seasonal_plants(self, month, n):
-
-        # Pass parameters to corresponding data layer method.
-        # Returns - a list of Plant Objects representing the n seasonal plants,
-        # or an empty list if the plant was not found.
-
-        plants = self.db.get_seasonal_plants(month, n)
-
-        return plants
-
-    def get_bed_plants(self, id, n):
-
-        # Pass parameters to corresponding data layer method.
-        # Returns - a list of Plant Objects representing the n plant in bed with id,
-        # or an empty list if the bed was not found or was empty.
-
-        plants = self.db.get_bed_plants(id, n)
-
-        return plants
 
 
 class BL_Route(object):

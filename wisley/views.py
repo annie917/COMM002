@@ -3,6 +3,7 @@ import jsonpickle
 from voluptuous import Schema, MultipleInvalid, Coerce, Required
 
 from wisley.bus_layer import BL_Plants
+from wisley.bus_layer import BL_PlantLists
 from wisley.bus_layer import BL_GIS
 from wisley.bus_layer import BL_Route
 from wisley.models import Node
@@ -79,8 +80,7 @@ def plants_seasonal():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            # Does not require location, so set up BL with empty Node
-            bl = BL_GIS(Node(0,'','',''))
+            bl = BL_PlantLists()
 
             plants = bl.get_seasonal_plants(request.args['month'], request.args['n'])
 
@@ -122,8 +122,7 @@ def plants_bed():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            # Does not require location, so set up BL with empty Node
-            bl = BL_GIS(Node(0,'','',''))
+            bl = BL_PlantLists()
 
             plants = bl.get_bed_plants(request.args['id'], request.args['n'])
 

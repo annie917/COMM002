@@ -141,7 +141,7 @@ class DAO_Basics(object):
 
     # Base class for all DAO classes that interact with RDBMS
 
-    def __init__(self, location):
+    def __init__(self):
 
         import mysql.connector
 
@@ -155,7 +155,6 @@ class DAO_Basics(object):
         database = config['MySql']['database']
 
         self.cnx = mysql.connector.connect(user=user, host=host, database=database)
-        self.location = location
 
     def db_close(self):
 
@@ -182,71 +181,24 @@ class DAO_Basics(object):
 
         return row
 
-    def get_node_details(self, node_id):
 
-        # Gets full details from node table for id = node_id
-        # Arguments:
-        # node_id - a node id
-        # Returns - a Node object populated with full node details
+class DAO_Location(DAO_Basics):
 
-        sql = 'SELECT id, ST_AsText(coordinates), name ' \
-              'FROM node ' \
-              'WHERE id = ' + str(node_id)
+    # Class adds location attribute for those that need it
+    def __init__(self, location):
 
-        row = self._execute_query_one(sql)
-
-        return Node.from_db_row(row)
-
-    def get_bed_centre(self, bed_id):
-
-        # Gets the mathematical centroid of the flower bed with id = bed_id
-        # Arguments:
-        # bed_id - id of the flower bed in question
-        # Returns - a Node object representing the centroid of the flower bed polygon
-
-        sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
-              'FROM flower_bed ' \
-              'WHERE id = ' + str(bed_id)
-
-        row = self._execute_query_one(sql)
-
-        bed_centre = Node.from_point_string(row[0])
-
-        bed_centre.id = bed_id
-        bed_centre.name = 'Centre bed ' + str(bed_id)
-
-        return bed_centre
-
-    def get_place(self, place_id):
-
-        # Gets full details from place table for id = place_id
-        # Arguments:
-        # place_id - a place id
-        # Returns - a Place object populated with full place details
-
-        sql = 'SELECT name, ST_AsText(coordinates), description ' \
-              'FROM place ' \
-              'WHERE id = ' + str(place_id)
-
-        row = self._execute_query_one(sql)
-
-        place = Place.from_point_string(row[1])
-
-        place.id = place_id
-        place.name = row[0]
-        place.description = row[2]
-
-        return place
+        DAO_Basics.__init__(self)
+        self.location = location
 
 
-class DAO_GIS(DAO_Basics):
+class DAO_GIS(DAO_Location):
 
-    # Data access class for executing spatial queries, inherits from DAO_Basics
+    # Data access class for executing spatial queries, inherits from DAO_Location
 
     def __init__(self, location):
 
         # Call superclass constructor to set up DB connection
-        DAO_Basics.__init__(self, location)
+        DAO_Location.__init__(self, location)
 
     def get_flower_beds(self, plant, n):
 
@@ -280,6 +232,7 @@ class DAO_GIS(DAO_Basics):
         for row in cursor:
 
             bed = Node.from_point_string(row[2])
+            bed.id = row[0]
             bed.id = row[0]
             bed.name = 'Flower Bed ' + str(bed.id)
 
@@ -329,6 +282,17 @@ class DAO_GIS(DAO_Basics):
 
         return places
 
+
+class DAO_PlantLists(DAO_Basics):
+
+    # Data access class for simple plant queries, inherits from DAO_Basics
+
+    def __init__(self):
+
+        # Call superclass constructor to set up DB connection
+
+        DAO_Basics.__init__(self)
+
     def get_seasonal_plants(self, month, n):
 
         # Gets the first n plants of seasonal interest in given month
@@ -336,7 +300,6 @@ class DAO_GIS(DAO_Basics):
         # n - the number of plants to be returned (0 returns all)
         # month - an integer month when 1=January
         # Returns - a list of populated Plant objects
-        # Note this query is not spatial but is in this class because it requires a db connection
 
         cursor = self.cnx.cursor()
 
@@ -372,7 +335,6 @@ class DAO_GIS(DAO_Basics):
         # n - the number of plants to be returned (0 returns all)
         # id - the id of the flower bed
         # Returns - a list of populated Plant objects
-        # Note this query is not spatial but is in this class because it requires a db connection
 
         cursor = self.cnx.cursor()
 
@@ -402,15 +364,15 @@ class DAO_GIS(DAO_Basics):
         return plants
 
 
-class DAO_Route(DAO_Basics):
+class DAO_Route(DAO_Location):
 
-    # Data access class for executing routing queries, inherits from DAO_Basics
+    # Data access class for executing routing queries, inherits from DAO_Location
 
     def __init__(self, location):
 
         # Call superclass constructor to set up DB connection
 
-        DAO_Basics.__init__(self, location)
+        DAO_Location.__init__(self, location)
 
     def get_graph(self):
 
@@ -483,6 +445,62 @@ class DAO_Route(DAO_Basics):
         row = self._execute_query_one(sql)
 
         return row[0]
+
+    def get_bed_centre(self, bed_id):
+
+        # Gets the mathematical centroid of the flower bed with id = bed_id
+        # Arguments:
+        # bed_id - id of the flower bed in question
+        # Returns - a Node object representing the centroid of the flower bed polygon
+
+        sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
+              'FROM flower_bed ' \
+              'WHERE id = ' + str(bed_id)
+
+        row = self._execute_query_one(sql)
+
+        bed_centre = Node.from_point_string(row[0])
+
+        bed_centre.id = bed_id
+        bed_centre.name = 'Centre bed ' + str(bed_id)
+
+        return bed_centre
+
+    def get_node_details(self, node_id):
+
+        # Gets full details from node table for id = node_id
+        # Arguments:
+        # node_id - a node id
+        # Returns - a Node object populated with full node details
+
+        sql = 'SELECT id, ST_AsText(coordinates), name ' \
+              'FROM node ' \
+              'WHERE id = ' + str(node_id)
+
+        row = self._execute_query_one(sql)
+
+        return Node.from_db_row(row)
+
+    def get_place(self, place_id):
+
+        # Gets full details from place table for id = place_id
+        # Arguments:
+        # place_id - a place id
+        # Returns - a Place object populated with full place details
+
+        sql = 'SELECT name, ST_AsText(coordinates), description ' \
+              'FROM place ' \
+              'WHERE id = ' + str(place_id)
+
+        row = self._execute_query_one(sql)
+
+        place = Place.from_point_string(row[1])
+
+        place.id = place_id
+        place.name = row[0]
+        place.description = row[2]
+
+        return place
 
     def get_directions(self, node1, node2):
 
