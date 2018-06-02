@@ -145,12 +145,10 @@ class BLO_Route(object):
 
         for node in nodes:
 
-            route.nodes.append(self.db.node_details(node))
-
             node2 = node
 
-            if len(route.nodes) > 1:
-                route.directions.append(self.db.directions(node1, node2))
+            if node1 != 0:
+                route.stages.append(self.db.directions(node1, node2))
 
             node1 = node
 

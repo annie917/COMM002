@@ -1,7 +1,7 @@
 from wisley.models import Node
 from wisley.models import Place
 from wisley.models import Plant
-from wisley.models import Direction
+from wisley.models import Stage
 
 import configparser
 
@@ -527,4 +527,4 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        return Direction(node1, node2, row[1], row[0])
+        return Stage(self.node_details(node1), self.node_details(node2), row[1], row[0])

@@ -112,18 +112,17 @@ class Route(object):
     def __init__(self):
 
         self.length = 0.0 # Total route length in metres
-        self.nodes = [] # List of node objects in order
         self.destination = Node(0, '0.0', '0.0', '') # Information about the destination
-        self.directions = [] # List of directions between nodes
+        self.stages = [] # List of  Stages
 
 
-class Direction(object):
+class Stage(object):
 
     # Holds information about how to navigate between two nodes
 
-    def __init__(self, node1, node2, length, direction):
+    def __init__(self, node1, node2, length, instruction):
 
-        self.node1 = node1 # First node (id as int)
-        self.node2 = node2 # Second node (id as int)
+        self.node1 = node1 # First node (Node)
+        self.node2 = node2 # Second node (Node)
         self.length = length # Length of stage in metres
-        self.instruction = direction # Direction node1 --> node2 (string)
+        self.instruction = instruction # Direction node1 --> node2 (string)
