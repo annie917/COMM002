@@ -139,11 +139,12 @@ def plants_bed():
 def get_beds():
 
     """@app.route('/beds') takes
-    plant (plant name number, coercible to int)
+    plant (plant name number, optional, coercible to int)
     lat (latitude, coercible to float)
     long (longitude, coercible to float)
     n (max number of records required, coercible to int, n=0 returns all
-    Finds n flower beds containing the given plant, sorted in order of proximity to a position defined by lat, long
+    Finds n flower beds containing a given plant (optional), sorted in order of proximity to a position defined by
+    lat, long
     Returns a list of populated Node objects.
     If the plant is not found, an empty list is returned.  If n=0, all matches are returned."""
 
