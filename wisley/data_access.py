@@ -202,20 +202,30 @@ class DAO_GIS(DAO_Location):
 
     def flower_beds(self, plant, n):
 
-        # Gets the n closest flower beds to location which contain plant, sorted by distance from location
+        # Gets the n closest flower beds to location which contain plant (optional), sorted by distance from location
         # Arguments:
         # n - the number of points of interest to be returned (0 returns all)
         # Returns - a list of Node objects representing flower beds
 
         cursor = self.connection.cursor()
 
-        sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist, ' \
-              'ST_AsText(ST_Centroid(polygon)) ' \
-              'FROM plant_bed pb ' \
-              'JOIN flower_bed fb ' \
-              'ON pb.bed_id = fb.id ' \
-              'WHERE pb.plant_id =' + str(plant) + ' ' \
-              'ORDER BY dist'
+        # If plant has been passed, looking for n nearest containing plant.  If not, just n nearest.
+        if plant:
+
+            sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist, ' \
+                  'ST_AsText(ST_Centroid(fb.polygon)) ' \
+                  'FROM plant_bed pb ' \
+                  'JOIN flower_bed fb ' \
+                  'ON pb.bed_id = fb.id ' \
+                  'WHERE pb.plant_id =' + str(plant) + ' ' \
+                  'ORDER BY dist'
+        else:
+
+            sql = 'SELECT id, ST_Distance(' + self.location.point_str() + ', polygon) AS dist, ' \
+                  'ST_AsText(ST_Centroid(polygon)) ' \
+                  'FROM flower_bed ' \
+                  'ORDER BY dist'
+
 
         # Limit query to n rows if required
         if n != '0':

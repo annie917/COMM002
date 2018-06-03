@@ -150,7 +150,7 @@ def get_beds():
     # Define validation schema
 
     schema = Schema({
-        Required('plant'): Coerce(int),
+        'plant': Coerce(int),
         Required('lat'): Coerce(float),
         Required('long'): Coerce(float),
         Required('n'): Coerce(int)
@@ -170,7 +170,7 @@ def get_beds():
         try:
             bl = BLO_GIS(Node(0, request.args['long'], request.args['lat'], ''))
 
-            beds = bl.get_flower_beds(request.args['name'], request.args['n'])
+            beds = bl.get_flower_beds(request.args.get('plant'), request.args['n'])
 
             resp = _get_response(beds)
 
