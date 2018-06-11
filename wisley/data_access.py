@@ -411,13 +411,13 @@ class DAO_Route(DAO_Location):
 
         return G
 
-    def nearest_node(self):
+    def nearest_node_id(self):
 
         # Finds the node nearest to location
         # Arguments:
-        # Returns - a GeoNode object representing the closest node to location
+        # Returns - the id of the closest node to location
 
-        sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
+        sql = 'SELECT id, ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
               'AS dist ' \
               'FROM node ' \
               'ORDER BY dist ' \
@@ -425,7 +425,7 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        return GeoNode.from_db_row(row)
+        return row[0]
 
     def place_nearest_node_id(self, place_id):
 

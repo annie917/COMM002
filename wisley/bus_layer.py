@@ -131,13 +131,13 @@ class BLO_Route(object):
         G = self.db.setup_graph()
 
         # Find node closet to location for starting point
-        start_node = self.db.nearest_node()
+        start_node_id = self.db.nearest_node_id()
 
         route = Route()
 
         # Calculate shortest route and route length
-        nodes = nx.astar_path(G, start_node.id, destination_node_id)
-        route.length = nx.astar_path_length(G, start_node.id, destination_node_id)
+        nodes = nx.astar_path(G, start_node_id, destination_node_id)
+        route.length = nx.astar_path_length(G, start_node_id, destination_node_id)
 
         node1 = 0
 
