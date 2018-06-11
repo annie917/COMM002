@@ -153,8 +153,9 @@ class DAO_Basics(object):
         user = config['MySql']['user']
         host = config['MySql']['host']
         database = config['MySql']['database']
+        password = config['MySql']['password']
 
-        self.connection = mysql.connector.connect(user=user, host=host, database=database)
+        self.connection = mysql.connector.connect(user=user, host=host, database=database, password=password)
 
     def db_close(self):
 
