@@ -15,8 +15,8 @@ class GeoNode(Node):
     def __init__(self, id, name, long, lat):
 
         Node.__init__(self, id, name)
-        self.long = long
-        self.lat = lat
+        self.long = long  #String
+        self.lat = lat   #String
 
     @classmethod
     # Alternative constructor - populates GeoNode from MySQL POINT string
@@ -36,7 +36,7 @@ class GeoNode(Node):
 
     def point_string(self):
         # Returns node in format for putting into db as POINT, with srid=4326 (GPS)
-        return 'ST_PointFromText(\'POINT(' + str(self.long) + ' ' + str(self.lat) + ')\', 4326)'
+        return 'ST_PointFromText(\'POINT(' + self.long + ' ' + self.lat + ')\', 4326)'
 
     def convert(self):
 
@@ -52,9 +52,9 @@ class GeoNode(Node):
         p1 = Proj(geo_string)
         p2 = Proj(proj_string)
 
-        x, y = transform(p1, p2, self.long, self.lat)
+        x, y = transform(p1, p2, float(self.long), float(self.lat))
 
-        return ProjNode(self.id, self.name, x, y)
+        return ProjNode(self.id, self.name, str(x), str(y))
 
 
 class ProjNode(Node):
@@ -63,8 +63,8 @@ class ProjNode(Node):
     def __init__(self, id, name, x, y):
 
         Node.__init__(self, id, name)
-        self.x = x
-        self.y = y
+        self.x = x   #String
+        self.y = y   #String
 
     @classmethod
     # Alternative constructor - populates ProjNode from MySQL POINT string
@@ -76,7 +76,7 @@ class ProjNode(Node):
     def point_string(self):
 
         # Returns node in format for putting into db as POINT, with srid=0 (cartesian)
-        return 'ST_PointFromText(\'POINT(' + str(self.x) + ' ' + str(self.y) + ')\')'
+        return 'ST_PointFromText(\'POINT(' + self.x + ' ' + self.y + ')\')'
 
     def convert(self):
 
@@ -93,9 +93,9 @@ class ProjNode(Node):
         p1 = Proj(proj_string)
         p2 = Proj(geo_string)
 
-        long, lat = transform(p1, p2, self.x, self.y)
+        long, lat = transform(p1, p2, float(self.x), float(self.y))
 
-        return GeoNode(self.id, self.name, long, lat)
+        return GeoNode(self.id, self.name, str(long), str(lat))
 
 
 class Place(GeoNode):
