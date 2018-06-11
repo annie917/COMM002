@@ -1,4 +1,5 @@
-from wisley.models import Node
+from wisley.models import ProjNode
+from wisley.models import GeoNode
 from wisley.models import Place
 from wisley.models import Plant
 from wisley.models import Stage
@@ -206,14 +207,14 @@ class DAO_GIS(DAO_Location):
         # Gets the n closest flower beds to location which contain plant (optional), sorted by distance from location
         # Arguments:
         # n - the number of points of interest to be returned (0 returns all)
-        # Returns - a list of Node objects representing flower beds
+        # Returns - a list of GeoNode objects representing flower beds
 
         cursor = self.connection.cursor()
 
         # If plant has been passed, looking for n nearest containing plant.  If not, just n nearest.
         if plant:
 
-            sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_str() + ', fb.polygon) AS dist, ' \
+            sql = 'SELECT pb.bed_id, ST_Distance(' + self.location.point_string() + ', fb.polygon) AS dist, ' \
                   'ST_AsText(ST_Centroid(fb.polygon)) ' \
                   'FROM plant_bed pb ' \
                   'JOIN flower_bed fb ' \
@@ -222,7 +223,7 @@ class DAO_GIS(DAO_Location):
                   'ORDER BY dist'
         else:
 
-            sql = 'SELECT id, ST_Distance(' + self.location.point_str() + ', polygon) AS dist, ' \
+            sql = 'SELECT id, ST_Distance(' + self.location.point_string() + ', polygon) AS dist, ' \
                   'ST_AsText(ST_Centroid(polygon)) ' \
                   'FROM flower_bed ' \
                   'ORDER BY dist'
@@ -239,15 +240,16 @@ class DAO_GIS(DAO_Location):
 
         flower_beds = []
 
-        # Copy flower bed to Node object and append to list
+        # Copy flower bed to ProjNode object and append to list
+        # Projected node because result of geometric calculation
         for row in cursor:
 
-            bed = Node.from_point_string(row[2])
-            bed.id = row[0]
+            bed = ProjNode.from_db_string(row[2])
             bed.id = row[0]
             bed.name = 'Flower Bed ' + str(bed.id)
 
-            flower_beds.append(bed)
+            # Will end up back with user, so convert to lat and long
+            flower_beds.append(bed.convert())
 
         cursor.close()
 
@@ -263,7 +265,7 @@ class DAO_GIS(DAO_Location):
         cursor = self.connection.cursor()
 
         sql = 'SELECT id, ST_AsText(coordinates), name, description, ' \
-              'ST_Distance(' + self.location.point_str() + ', coordinates) ' \
+              'ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
               'AS dist ' \
               'FROM place ' \
               'ORDER BY dist'
@@ -279,10 +281,10 @@ class DAO_GIS(DAO_Location):
 
         places = []
 
-        # Copy points of interest to Node object and append to list
+        # Copy places to Place object and append to list
         for row in cursor:
 
-            place = Place.from_point_string(row[1])
+            place = Place.from_db_string(row[1])
             place.id = row[0]
             place.name = row[2]
             place.description = row[3]
@@ -413,9 +415,9 @@ class DAO_Route(DAO_Location):
 
         # Finds the node nearest to location
         # Arguments:
-        # Returns - a Node object representing the closest node to location
+        # Returns - a GeoNode object representing the closest node to location
 
-        sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + self.location.point_str() + ', coordinates) ' \
+        sql = 'SELECT id, ST_AsText(coordinates), name, ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
               'AS dist ' \
               'FROM node ' \
               'ORDER BY dist ' \
@@ -423,7 +425,7 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        return Node.from_db_row(row)
+        return GeoNode.from_db_row(row)
 
     def place_nearest_node_id(self, place_id):
 
@@ -462,7 +464,7 @@ class DAO_Route(DAO_Location):
         # Gets the mathematical centroid of the flower bed with id = bed_id
         # Arguments:
         # bed_id - id of the flower bed in question
-        # Returns - a Node object representing the centroid of the flower bed polygon
+        # Returns - a GeoNode object representing the centroid of the flower bed polygon
 
         sql = 'SELECT ST_AsText(ST_Centroid(polygon)) ' \
               'FROM flower_bed ' \
@@ -470,19 +472,20 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        bed_centre = Node.from_point_string(row[0])
+        bed_centre = ProjNode.from_db_string(row[0])
 
         bed_centre.id = bed_id
         bed_centre.name = 'Centre bed ' + str(bed_id)
 
-        return bed_centre
+        # Convert projected coordinates to lat and long and return
+        return bed_centre.convert()
 
     def node_details(self, node_id):
 
         # Gets full details from node table for id = node_id
         # Arguments:
         # node_id - a node id
-        # Returns - a Node object populated with full node details
+        # Returns - a GeoNode object populated with full node details
 
         sql = 'SELECT id, ST_AsText(coordinates), name ' \
               'FROM node ' \
@@ -490,7 +493,7 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        return Node.from_db_row(row)
+        return GeoNode.from_db_row(row)
 
     def place_details(self, place_id):
 
@@ -505,7 +508,7 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        place = Place.from_point_string(row[1])
+        place = Place.from_db_string(row[1])
 
         place.id = place_id
         place.name = row[0]

@@ -62,13 +62,13 @@ class BLO_GIS(object):
 
         from wisley.data_access import DAO_GIS
 
-        # Set up a data access object with location and connect to db.
-        self.db = DAO_GIS(location)
+        # Set up a data access object with location (projected coordinates) and connect to db.
+        self.db = DAO_GIS(location.convert())
 
     def get_flower_beds(self, plant, n):
 
         # Pass parameters to corresponding data layer method.
-        # Returns - a list of Node Objects representing the n flower beds, or an empty list if the plant was not found.
+        # Returns - a list of GeoNode Objects representing the n flower beds, or an empty list if the plant was not found.
 
         flower_beds = self.db.flower_beds(plant, n)
 
@@ -97,8 +97,8 @@ class BLO_Route(object):
 
         from wisley.data_access import DAO_Route
 
-        # Set up a data access object with location and connect to db
-        self.db = DAO_Route(location)
+        # Set up a data access object with location (projected coordinates) and connect to db
+        self.db = DAO_Route(location.convert())
 
     def get_place_route(self, id):
 

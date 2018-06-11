@@ -6,7 +6,7 @@ from wisley.bus_layer import BLO_Plants
 from wisley.bus_layer import BLO_PlantLists
 from wisley.bus_layer import BLO_GIS
 from wisley.bus_layer import BLO_Route
-from wisley.models import Node
+from wisley.models import GeoNode
 
 
 app = Flask(__name__)
@@ -169,7 +169,7 @@ def get_beds():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BLO_GIS(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_GIS(GeoNode(0, '', request.args['long'], request.args['lat']))
 
             beds = bl.get_flower_beds(request.args.get('plant'), request.args['n'])
 
@@ -213,7 +213,7 @@ def get_places():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BLO_GIS(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_GIS(GeoNode(0, '', request.args['long'], request.args['lat']))
 
             places = bl.get_places(request.args['n'])
 
@@ -257,7 +257,7 @@ def route_bed():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
-            bl = BLO_Route(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_Route(GeoNode(0, '', request.args['long'], request.args['lat']))
 
             route = bl.get_bed_route(request.args['id'])
 
@@ -302,7 +302,7 @@ def route_place():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            bl = BLO_Route(Node(0, request.args['long'], request.args['lat'], ''))
+            bl = BLO_Route(GeoNode(0, '', request.args['long'], request.args['lat']))
 
             route = bl.get_place_route(request.args['id'])
 

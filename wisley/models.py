@@ -1,3 +1,137 @@
+class Node(object):
+
+    # Base Node class for GeoNode and ProjNode.  Abstract.
+    def __init__(self, id, name):
+
+        self.id = id  # int
+        self.name = name  # string
+
+        return
+
+
+class GeoNode(Node):
+
+    # Sub class for storing nodes in geographic coordinate systems - lat, long
+    def __init__(self, id, name, long, lat):
+
+        Node.__init__(self, id, name)
+        self.long = long
+        self.lat = lat
+
+    @classmethod
+    # Alternative constructor - populates GeoNode from MySQL POINT string
+    def from_db_string(cls, db_string):
+
+        long_and_lat = db_string.lstrip('POINT(').rstrip(')').split(' ')
+
+        return cls(0, '', long_and_lat[0], long_and_lat[1])
+
+    @classmethod
+    def from_db_row(cls, db_row):
+
+        # Alternative constructor - populates Node from a database row tuple
+        long_and_lat = db_row[1].lstrip('POINT(').rstrip(')').split(' ')
+
+        return cls(db_row[0], db_row[2], long_and_lat[0], long_and_lat[1])
+
+    def point_string(self):
+        # Returns node in format for putting into db as POINT, with srid=4326 (GPS)
+        return 'ST_PointFromText(\'POINT(' + str(self.long) + ' ' + str(self.lat) + ')\', 4326)'
+
+    def convert(self):
+
+        # Produces a projected node object from this object
+        from pyproj import Proj, transform
+        import configparser
+
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        geo_string = config['Projections']['geographic']
+        proj_string = config['Projections']['projected']
+
+        p1 = Proj(geo_string)
+        p2 = Proj(proj_string)
+
+        x, y = transform(p1, p2, self.long, self.lat)
+
+        return ProjNode(self.id, self.name, x, y)
+
+
+class ProjNode(Node):
+
+    # Sub class for storing node in projected coordinate system
+    def __init__(self, id, name, x, y):
+
+        Node.__init__(self, id, name)
+        self.x = x
+        self.y = y
+
+    @classmethod
+    # Alternative constructor - populates ProjNode from MySQL POINT string
+    def from_db_string(cls, db_string):
+        x_and_y = db_string.lstrip('POINT(').rstrip(')').split(' ')
+
+        return cls(0, '', x_and_y[0], x_and_y[1])
+
+    def point_string(self):
+
+        # Returns node in format for putting into db as POINT, with srid=0 (cartesian)
+        return 'ST_PointFromText(\'POINT(' + str(self.x) + ' ' + str(self.y) + ')\')'
+
+    def convert(self):
+
+        # Produces a node object with geographic coordinates (lat/long)
+        # Should only be done to convert the result of a geometric calculation as accuracy will be lost
+        from pyproj import Proj, transform
+        import configparser
+
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        geo_string = config['Projections']['geographic']
+        proj_string = config['Projections']['projected']
+
+        p1 = Proj(proj_string)
+        p2 = Proj(geo_string)
+
+        long, lat = transform(p1, p2, self.x, self.y)
+
+        return GeoNode(self.id, self.name, long, lat)
+
+
+class Place(GeoNode):
+
+    # Extension of GeoNode to store a place
+
+    def __init__(self, id, lat, long, name):
+
+        GeoNode.__init__(self, id, lat, long, name)
+
+        self.description = ''
+
+
+class Route(object):
+
+    # Holds all the information required to pass a route back to client.  Not directly related to a db table
+
+    def __init__(self):
+
+        self.length = 0.0 # Total route length in metres
+        self.destination = GeoNode(0, '', '0.0', '0.0') # Information about the destination
+        self.stages = [] # List of  Stages
+
+
+class Stage(object):
+
+    # Holds information about how to navigate between two nodes
+
+    def __init__(self, node1, node2, length, instruction):
+
+        self.node1 = node1 # First node (Node)
+        self.node2 = node2 # Second node (Node)
+        self.length = length # Length of stage in metres
+        self.instruction = instruction # Direction node1 --> node2 (string)
+
+
 class Plant(object):
 
     # Class for representing a plant record from XML
@@ -58,71 +192,3 @@ class Plant(object):
         self.low_maintenance = elem.attrib['LowMaintenance']
 
         return
-
-
-class Node(object):
-
-    # Represents a row in the node table.  Lat and long are stored as a POINT in db, but must be retrieved as strings
-    # As the client will ultimately want them as strings, they are stored here as strings
-    # Also used to represent flower beds, with id = bed id, and lat and long being mathematical centroid of bed
-
-    def __init__(self, id, long, lat, name):
-
-        self.id = id # int
-        self.long = long # string
-        self.lat = lat # string
-        self.name = name # string
-
-    @classmethod
-    def from_point_string(cls, point_string):
-
-        # Alternative constructor - populates Node from a point string
-        long_and_lat = point_string.lstrip('POINT(').rstrip(')').split(' ')
-
-        return cls(0, long_and_lat[0], long_and_lat[1], '')
-
-    @classmethod
-    def from_db_row(cls, db_row):
-
-        # Alternative constructor - populates Node from a database row tuple
-        long_and_lat = db_row[1].lstrip('POINT(').rstrip(')').split(' ')
-
-        return cls(db_row[0], long_and_lat[0], long_and_lat[1], db_row[2])
-
-    def point_str(self):
-
-        return 'ST_PointFromText(\'POINT(' + self.long + ' ' + self.lat + ')\')'
-
-
-class Place(Node):
-
-    # Extension of Node to store a place
-
-    def __init__(self, id, lat, long, name):
-
-        Node.__init__(self, id, lat, long, name)
-
-        self.description = ''
-
-
-class Route(object):
-
-    # Holds all the information required to pass a route back to client.  Not directly related to a db table
-
-    def __init__(self):
-
-        self.length = 0.0 # Total route length in metres
-        self.destination = Node(0, '0.0', '0.0', '') # Information about the destination
-        self.stages = [] # List of  Stages
-
-
-class Stage(object):
-
-    # Holds information about how to navigate between two nodes
-
-    def __init__(self, node1, node2, length, instruction):
-
-        self.node1 = node1 # First node (Node)
-        self.node2 = node2 # Second node (Node)
-        self.length = length # Length of stage in metres
-        self.instruction = instruction # Direction node1 --> node2 (string)
