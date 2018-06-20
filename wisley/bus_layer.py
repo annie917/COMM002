@@ -8,14 +8,14 @@ class BLO_Plants(object):
         from wisley.data_access import DAO_Plants
 
         # Set up data access object (does not require location or database connection).
-        self.db = DAO_Plants()
+        self.dao = DAO_Plants()
 
     def get_plants(self, search_string, n):
 
         # Pass parameters to corresponding data layer method.
         # Returns - a list of populated Plant objects, or an empty list if the search string was not found.
 
-        plants = self.db.plants(search_string, n)
+        plants = self.dao.plants(search_string, n)
 
         return plants
 
@@ -30,7 +30,7 @@ class BLO_PlantLists(object):
         from wisley.data_access import DAO_PlantLists
 
         # Set up a data access object and connect to db.
-        self.db = DAO_PlantLists()
+        self.dao = DAO_PlantLists()
 
     def get_seasonal_plants(self, month, n):
 
@@ -38,7 +38,7 @@ class BLO_PlantLists(object):
         # Returns - a list of Plant Objects representing the n seasonal plants,
         # or an empty list if the plant was not found.
 
-        plants = self.db.seasonal_plants(month, n)
+        plants = self.dao.seasonal_plants(month, n)
 
         return plants
 
@@ -48,7 +48,7 @@ class BLO_PlantLists(object):
         # Returns - a list of Plant Objects representing the n plant in bed with id,
         # or an empty list if the bed was not found or was empty.
 
-        plants = self.db.bed_plants(id, n)
+        plants = self.dao.bed_plants(id, n)
 
         return plants
 
@@ -63,16 +63,16 @@ class BLO_GIS(object):
         from wisley.data_access import DAO_GIS
 
         # Set up a data access object with location (projected coordinates) and connect to db.
-        self.db = DAO_GIS(location.convert())
+        self.dao = DAO_GIS(location.convert())
 
     def get_flower_beds(self, plant, n):
 
         # Pass parameters to corresponding data layer method.
         # Returns - a list of GeoNode Objects representing the n flower beds, or an empty list if the plant was not found.
 
-        flower_beds = self.db.flower_beds(plant, n)
+        flower_beds = self.dao.flower_beds(plant, n)
 
-        self.db.db_close()
+        self.dao.db_close()
 
         return flower_beds
 
@@ -81,9 +81,9 @@ class BLO_GIS(object):
         # Pass parameters to corresponding data layer method.
         # Returns - a list of Place Objects representing the n places, or an empty list not found.
 
-        places = self.db.places(n)
+        places = self.dao.places(n)
 
-        self.db.db_close()
+        self.dao.db_close()
 
         return places
 
@@ -98,23 +98,23 @@ class BLO_Route(object):
         from wisley.data_access import DAO_Route
 
         # Set up a data access object with location (projected coordinates) and connect to db
-        self.db = DAO_Route(location.convert())
+        self.dao = DAO_Route(location.convert())
 
     def get_place_route(self, id):
 
         # Get node closest to place and calculate route between location and given place
-        route = self._get_route(self.db.place_nearest_node_id(id))
+        route = self._get_route(self.dao.place_nearest_node_id(id))
         # Populate destination details
-        route.destination = self.db.place_details(id)
+        route.destination = self.dao.place_details(id)
 
         return route
 
     def get_bed_route(self, id):
 
         # Get node closest to flower bed and calculate route between location and given flower bed
-        route = self._get_route(self.db.bed_nearest_node_id(id))
+        route = self._get_route(self.dao.bed_nearest_node_id(id))
         # Populate destination details
-        route.destination = self.db.bed_centre(id)
+        route.destination = self.dao.bed_centre(id)
 
         return route
 
@@ -128,10 +128,10 @@ class BLO_Route(object):
         # Returns - a Route object populated with the shortest route between location and destination_node_id
 
         # Read in network from database
-        G = self.db.setup_graph()
+        G = self.dao.setup_graph()
 
         # Find node closet to location for starting point
-        start_node_id = self.db.nearest_node_id()
+        start_node_id = self.dao.nearest_node_id()
 
         route = Route()
 
@@ -148,7 +148,7 @@ class BLO_Route(object):
             node2 = node
 
             if node1 != 0:
-                route.stages.append(self.db.directions(node1, node2))
+                route.stages.append(self.dao.directions(node1, node2))
 
             node1 = node
 
