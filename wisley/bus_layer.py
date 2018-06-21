@@ -118,13 +118,13 @@ class BLO_Route(object):
 
         return route
 
-    def _get_route(self, destination_node_id):
+    def _get_route(self, node_id):
 
         import networkx as nx
         from wisley.models import Route
 
         # Arguments:
-        # destination_node_id - identity of destination node
+        # node_id - identity of destination node
         # Returns - a Route object populated with the shortest route between location and destination_node_id
 
         # Read in network from database
@@ -136,8 +136,8 @@ class BLO_Route(object):
         route = Route()
 
         # Calculate shortest route and route length
-        nodes = nx.astar_path(G, start_node_id, destination_node_id)
-        route.length = nx.astar_path_length(G, start_node_id, destination_node_id)
+        nodes = nx.astar_path(G, start_node_id, node_id)
+        route.length = nx.astar_path_length(G, start_node_id, node_id)
 
         node1 = 0
 
