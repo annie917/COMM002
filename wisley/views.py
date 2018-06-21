@@ -1,6 +1,6 @@
 from flask import Flask, request, make_response
 import jsonpickle
-from voluptuous import Schema, MultipleInvalid, Coerce, Required
+from voluptuous import Schema, MultipleInvalid, Coerce, Required, All, Length, Range
 
 from wisley.bus_layer import BLO_Plants
 from wisley.bus_layer import BLO_PlantLists
@@ -17,96 +17,22 @@ def get_plants():
 
     """@app.route('/plants') takes
     name (search string, string)
-    n (max number of records required, coercible to int, n=0 returns all
-    Searches the Preferred Common Name, Accepted Botanical Name, Synonyms and Common Names fields for the given name
-    string (not case sensitive.  Returns a list of populated Plant objects, representing the first n instances found.
-    If the name is not found, an empty list is returned.  If n=0, all matches are returned."""
-
-    # Define validation schema
-    schema = Schema({
-        Required('name'): str,
-        Required('n'): Coerce(int)
-    })
-
-    # Validate and return a Bad Request error if necessary
-    try:
-        schema(request.args.to_dict())
-
-    except MultipleInvalid as err:
-
-        resp = _handle_exception(err, '400')
-
-    else:
-
-        # Call business layer method and return an Internal Server Error if anything goes wrong
-        try:
-            bl = BLO_Plants()
-            plants = bl.get_plants(request.args['name'], request.args['n'])
-            resp = _get_response(plants)
-
-        except Exception as err:
-            resp = _handle_exception(err, '500')
-
-    return resp
-
-
-@app.route('/plants/seasonal')
-def plants_seasonal():
-
-    """@app.route('/plants/seasonal') takes
+    {Searches the Preferred Common Name, Accepted Botanical Name, Synonyms and Common Names fields for the given name
+    string (not case sensitive.} OR
     month (month, coercible to int, 1=January)
-    n (max number of records required, coercible to int, n=0 returns all
-    Finds the first n plants of seasonal interest in the given month.
-    Returns a list of populated Plant objects.
-    If the name is not found, an empty list is returned.  If n=0, all matches are returned."""
-
-    # Define validation schema
-
-    schema = Schema({
-        Required('month'): Coerce(int),
-        Required('n'): Coerce(int)
-    })
-
-    # Validate and return a Bad Request error if necessary
-    try:
-        schema(request.args.to_dict())
-
-    except MultipleInvalid as err:
-
-        resp = _handle_exception(err, '400')
-
-    else:
-
-        # Call business layer method and return an Internal Server Error if anything goes wrong
-        try:
-
-            bl = BLO_PlantLists()
-
-            plants = bl.get_seasonal_plants(request.args['month'], request.args['n'])
-
-            resp = _get_response(plants)
-
-        except Exception as err:
-
-            resp = _handle_exception(err, '500')
-
-    return resp
-
-@app.route('/plants/bed')
-def plants_bed():
-
-    """@app.route('/plants/bed') takes
+    {Finds the first n plants of seasonal interest in the given month.} OR
     id (bed id, coercible to int)
-    n (max number of records required, coercible to int, n=0 returns all
-    Finds the first n plants in the given bed.
-    Returns a list of populated Plant objects.
-    If the bed is not found or is emmpty, an empty list is returned.  If n=0, all matches are returned."""
+    {Finds the first n plants in the given bed.}
+    n (max number of records required, coercible to int, n=0 (default) returns all
+    Returns a list of populated Plant objects, representing the first n instances found.
+    If plants matching criteria are not found, an empty list is returned.  """
 
     # Define validation schema
-
     schema = Schema({
-        Required('id'): Coerce(int),
-        Required('n'): Coerce(int)
+        'name': All(str, Length(min=1)),
+        'month': All(Coerce(int), Range(min=1, max=12)),
+        'id': Coerce(int),
+        'n': Coerce(int)
     })
 
     # Validate and return a Bad Request error if necessary
@@ -122,14 +48,37 @@ def plants_bed():
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
 
-            bl = BLO_PlantLists()
+            # Default n to 0
+            if request.args.get('n'):
+                n = request.args['n']
+            else:
+                n = '0'
 
-            plants = bl.get_bed_plants(request.args['id'], request.args['n'])
+            # Check which argument we have and set up appropriate BLO
+            if request.args.get('month'):
 
-            resp = _get_response(plants)
+                bl = BLO_PlantLists()
+                plants = bl.get_seasonal_plants(request.args['month'], n)
+                resp = _get_response(plants)
+
+            elif request.args.get('id'):
+
+                bl = BLO_PlantLists()
+                plants = bl.get_bed_plants(request.args['id'], n)
+                resp = _get_response(plants)
+
+            elif request.args.get('name'):
+
+                bl = BLO_Plants()
+                plants = bl.get_plants(request.args['name'], n)
+                resp = _get_response(plants)
+
+            else:
+
+                # No arguments provided, return bad request error
+                resp = _handle_exception('Provide either name, month or id', '400')
 
         except Exception as err:
-
             resp = _handle_exception(err, '500')
 
     return resp
@@ -154,7 +103,7 @@ def get_beds():
         'plant': Coerce(int),
         Required('lat'): Coerce(float),
         Required('long'): Coerce(float),
-        Required('n'): Coerce(int)
+        'n': Coerce(int)
     })
 
     # Validate and return a Bad Request error if necessary
@@ -169,9 +118,16 @@ def get_beds():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
+
+            # Default n to 0
+            if request.args.get('n'):
+                n = request.args['n']
+            else:
+                n = '0'
+
             bl = BLO_GIS(GeoNode(0, '', request.args['long'], request.args['lat']))
 
-            beds = bl.get_flower_beds(request.args.get('plant'), request.args['n'])
+            beds = bl.get_flower_beds(request.args.get('plant'), n)
 
             resp = _get_response(beds)
 
@@ -198,7 +154,7 @@ def get_places():
     schema = Schema({
         Required('lat'): Coerce(float),
         Required('long'): Coerce(float),
-        Required('n'): Coerce(int)
+        'n': Coerce(int)
     })
 
     # Validate and return a Bad Request error if necessary
@@ -213,9 +169,16 @@ def get_places():
 
         # Call business layer method and return an Internal Server Error if anything goes wrong
         try:
+
+            # Default n to 0
+            if request.args.get('n'):
+                n = request.args['n']
+            else:
+                n = '0'
+
             bl = BLO_GIS(GeoNode(0, '', request.args['long'], request.args['lat']))
 
-            places = bl.get_places(request.args['n'])
+            places = bl.get_places(n)
 
             resp = _get_response(places)
 
@@ -226,8 +189,8 @@ def get_places():
     return resp
 
 
-@app.route('/route/bed')
-def route_bed():
+@app.route('/routes/bed/<int:id>')
+def route_bed(id):
 
     """@app.route('/route/bed') takes
     lat (latitude, coercible to float)
@@ -241,8 +204,7 @@ def route_bed():
 
     schema = Schema({
         Required('lat'): Coerce(float),
-        Required('long'): Coerce(float),
-        Required('id'): Coerce(int)
+        Required('long'): Coerce(float)
     })
 
     # Validate and return a Bad Request error if necessary
@@ -259,7 +221,7 @@ def route_bed():
         try:
             bl = BLO_Route(GeoNode(0, '', request.args['long'], request.args['lat']))
 
-            route = bl.get_bed_route(request.args['id'])
+            route = bl.get_bed_route(id)
 
             resp = _get_response(route)
 
@@ -270,8 +232,8 @@ def route_bed():
     return resp
 
 
-@app.route('/route/place')
-def route_place():
+@app.route('/routes/place/<int:id>')
+def route_place(id):
 
     """@app.route('/route/place') takes
     lat (latitude, coercible to float)
@@ -285,8 +247,7 @@ def route_place():
 
     schema = Schema({
         Required('lat'): Coerce(float),
-        Required('long'): Coerce(float),
-        Required('id'): Coerce(int)
+        Required('long'): Coerce(float)
     })
 
     # Validate and return a Bad Request error if necessary
@@ -304,7 +265,7 @@ def route_place():
 
             bl = BLO_Route(GeoNode(0, '', request.args['long'], request.args['lat']))
 
-            route = bl.get_place_route(request.args['id'])
+            route = bl.get_place_route(id)
 
             resp = _get_response(route)
 
