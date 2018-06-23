@@ -21,7 +21,7 @@ class DAO_Plants(object):
 
     def plant_attributes(self, name_num):
 
-        import lxml.etree as etree
+        import xml.etree.ElementTree as etree
 
         # Searches XML for exact match on name_num and returns fully populated Plant object
         # Arguments:
@@ -68,7 +68,7 @@ class DAO_Plants(object):
 
     def plants(self, search_string, n):
 
-        import lxml.etree as etree
+        import xml.etree.ElementTree as etree
 
         # Examines the PreferredCommonName, AcceptedBotanicalName, CommonName and Synonyms fields for the search string
         # and returns a list of n Plant objects populated with the attributes of the first n matches
