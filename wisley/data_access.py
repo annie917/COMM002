@@ -397,27 +397,36 @@ class DAO_Route(DAO_Location):
 
         cursor = self.connection.cursor()
 
-        query = 'SELECT node1, node2, weight ' \
+        query = 'SELECT node1, node2, ST_AsTExt(proj1), ST_AsText(proj2), weight ' \
                 'FROM edge'
 
         cursor.execute(query)
 
         G = nx.Graph()
 
-        for node1, node2, weight in cursor:
-            G.add_edge(node1, node2, weight=weight)
+        for id1, id2, proj1, proj2, weight in cursor:
+
+            # Vertices need projected coordinates, use ProjNode to get x and y
+            node1 = ProjNode.from_db_string(proj1)
+            node2 = ProjNode.from_db_string(proj2)
+
+            G.add_edge((node1.x, node1.y), (node2.x, node2.y), weight=weight)
+
+            # Tag vertices with node id, for later retrieval
+            G.nodes[node1.x, node1.y]['id'] = id1
+            G.nodes[node2.x, node2.y]['id'] = id2
 
         cursor.close()
 
         return G
 
-    def nearest_node_id(self):
+    def nearest_node(self):
 
         # Finds the node nearest to location
         # Arguments:
-        # Returns - the id of the closest node to location
+        # Returns - the ProjNode closest to location
 
-        sql = 'SELECT id, ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
+        sql = 'SELECT id, ST_AsText(proj_coord), name, ST_Distance(' + self.location.point_string() + ', proj_coord) ' \
               'AS dist ' \
               'FROM node ' \
               'ORDER BY dist ' \
@@ -425,43 +434,47 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        return row[0]
+        return ProjNode.from_db_row(row)
 
-    def place_nearest_node_id(self, place_id):
+    def place_nearest_node(self, place_id):
 
         # Finds the id of the closest node to place_id
         # Arguments:
         # place_id - the id of the place
         # Returns:
-        # The id of the closest node to the given place
+        # ProjNode closest to the place
 
-        sql = 'SELECT nearest_node ' \
-              'FROM place ' \
-              'WHERE id =' + str(place_id) + ';'
+        sql = 'SELECT p.nearest_node, ST_AsText(n.proj_coord), n.name ' \
+              'FROM place AS p ' \
+              'JOIN node AS n ' \
+              'ON p.nearest_node = n.id ' \
+              'WHERE p.id = ' + str(place_id) + ';'
 
         row = self._execute_query(sql)
 
-        return row[0]
+        return ProjNode.from_db_row(row)
 
-    def bed_nearest_node_id(self, bed_id):
+    def bed_nearest_node(self, bed_id):
 
         # Finds the id of the closest node to bed_id
         # Arguments:
         # bed_id - the id of the flower bed
         # Returns:
-        # The id of the closest node to the given flower bed
+        # The ProjNode nearest to the flower bed
 
-        sql = 'SELECT nearest_node ' \
-              'FROM flower_bed ' \
-              'WHERE id =' + str(bed_id) + ';'
+        sql = 'SELECT f.nearest_node, ST_AsText(n.proj_coord), n.name ' \
+              'FROM flower_bed AS f ' \
+              'JOIN node AS n ' \
+              'ON f.nearest_node = n.id ' \
+              'WHERE f.id = ' + str(bed_id) + ';'
 
         row = self._execute_query(sql)
 
-        return row[0]
+        return ProjNode.from_db_row(row)
 
-    def bed_centre(self, bed_id):
+    def bed_details(self, bed_id):
 
-        # Gets the mathematical centroid of the flower bed with id = bed_id
+        # Gets full details of the flower bed with id = bed_id
         # Arguments:
         # bed_id - id of the flower bed in question
         # Returns - a GeoNode object representing the centroid of the flower bed polygon
@@ -472,13 +485,13 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
-        bed_centre = ProjNode.from_db_string(row[0])
+        bed = ProjNode.from_db_string(row[0])
 
-        bed_centre.id = bed_id
-        bed_centre.name = 'Centre bed ' + str(bed_id)
+        bed.id = bed_id
+        bed.name = 'Centre bed ' + str(bed_id)
 
         # Convert projected coordinates to lat and long and return
-        return bed_centre.convert()
+        return bed.convert()
 
     def node_details(self, node_id):
 

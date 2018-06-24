@@ -103,7 +103,7 @@ class BLO_Route(object):
     def get_place_route(self, id):
 
         # Get node closest to place and calculate route between location and given place
-        route = self._get_route(self.dao.place_nearest_node_id(id))
+        route = self._get_route(self.dao.place_nearest_node(id))
         # Populate destination details
         route.destination = self.dao.place_details(id)
 
@@ -112,44 +112,59 @@ class BLO_Route(object):
     def get_bed_route(self, id):
 
         # Get node closest to flower bed and calculate route between location and given flower bed
-        route = self._get_route(self.dao.bed_nearest_node_id(id))
+        route = self._get_route(self.dao.bed_nearest_node(id))
         # Populate destination details
-        route.destination = self.dao.bed_centre(id)
+        route.destination = self.dao.bed_details(id)
 
         return route
 
-    def _get_route(self, node_id):
+    def _get_route(self, node):
 
         import networkx as nx
         from wisley.models import Route
 
         # Arguments:
-        # node_id - identity of destination node
-        # Returns - a Route object populated with the shortest route between location and destination_node_id
+        # node - destination node
+        # Returns - a Route object populated with the shortest route between location and destination node
 
         # Read in network from database
         G = self.dao.setup_graph()
 
         # Find node closet to location for starting point
-        start_node_id = self.dao.nearest_node_id()
+        start_node = self.dao.nearest_node()
 
         route = Route()
 
-        # Calculate shortest route and route length
-        nodes = nx.astar_path(G, start_node_id, node_id)
-        route.length = nx.astar_path_length(G, start_node_id, node_id)
-
-        node1 = 0
+        # Calculate shortest route
+        nodes = nx.astar_path(G, (start_node.x, start_node.y), (node.x, node.y), heuristic=self._dist, weight='weight')
 
         # Loop through nodes getting full details and directions from database
 
+        node1_id = 0
+
         for node in nodes:
 
-            node2 = node
+            # Retrieve node id using id attribute
+            node2_id = G.nodes[node]['id']
 
-            if node1 != 0:
-                route.stages.append(self.dao.directions(node1, node2))
+            if node1_id != 0:
+                route.stages.append(self.dao.directions(node1_id, node2_id))
+                route.length += route.stages[-1].length
 
-            node1 = node
+            node1_id = node2_id
 
         return route
+
+    def _dist(self, current, destination):
+
+        # Heuristic function for A* algorithm.  Calculates Euclidean distance between two points
+
+        x1 = current[0]
+        y1 = current[1]
+        x2 = destination[0]
+        y2 = destination[1]
+
+        h = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+
+        return h
+
