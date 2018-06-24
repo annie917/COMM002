@@ -54,7 +54,7 @@ class GeoNode(Node):
 
         x, y = transform(p1, p2, float(self.long), float(self.lat))
 
-        return ProjNode(self.id, self.name, str(x), str(y))
+        return ProjNode(self.id, self.name, x, y)
 
 
 class ProjNode(Node):
@@ -63,20 +63,28 @@ class ProjNode(Node):
     def __init__(self, id, name, x, y):
 
         Node.__init__(self, id, name)
-        self.x = x   #String
-        self.y = y   #String
+        self.x = x   #float
+        self.y = y   #float
 
     @classmethod
     # Alternative constructor - populates ProjNode from MySQL POINT string
     def from_db_string(cls, db_string):
         x_and_y = db_string.lstrip('POINT(').rstrip(')').split(' ')
 
-        return cls(0, '', x_and_y[0], x_and_y[1])
+        return cls(0, '', float(x_and_y[0]), float(x_and_y[1]))
+
+    @classmethod
+    def from_db_row(cls, db_row):
+
+        # Alternative constructor - populates Node from a database row tuple
+        x_and_y = db_row[1].lstrip('POINT(').rstrip(')').split(' ')
+
+        return cls(db_row[0], db_row[2], float(x_and_y[0]), float(x_and_y[1]))
 
     def point_string(self):
 
         # Returns node in format for putting into db as POINT, with srid=0 (cartesian)
-        return 'ST_PointFromText(\'POINT(' + self.x + ' ' + self.y + ')\')'
+        return 'ST_PointFromText(\'POINT(' + str(self.x) + ' ' + str(self.y) + ')\')'
 
     def convert(self):
 
@@ -93,7 +101,7 @@ class ProjNode(Node):
         p1 = Proj(proj_string)
         p2 = Proj(geo_string)
 
-        long, lat = transform(p1, p2, float(self.x), float(self.y))
+        long, lat = transform(p1, p2, self.x, self.y)
 
         return GeoNode(self.id, self.name, str(long), str(lat))
 
