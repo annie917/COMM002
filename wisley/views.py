@@ -7,6 +7,10 @@ from wisley.bus_layer import BLO_PlantLists
 from wisley.bus_layer import BLO_GIS
 from wisley.bus_layer import BLO_Route
 from wisley.models import GeoNode
+from wisley.models import BedNotFound
+from wisley.models import PlaceNotFound
+
+
 
 
 app = Flask(__name__)
@@ -225,6 +229,11 @@ def route_bed(id):
 
             resp = _get_response(route)
 
+        except BedNotFound as err:
+
+            # id doesn't exist, return 404
+            resp = _handle_exception(err, '404')
+
         except Exception as err:
 
             resp = _handle_exception(err, '500')
@@ -268,6 +277,11 @@ def route_place(id):
             route = bl.get_place_route(id)
 
             resp = _get_response(route)
+
+        except PlaceNotFound as err:
+
+            # id doesn't exist, return 404
+            resp = _handle_exception(err, '404')
 
         except Exception as err:
 

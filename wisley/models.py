@@ -200,3 +200,17 @@ class Plant(object):
         self.low_maintenance = elem.attrib['LowMaintenance']
 
         return
+
+
+# Custom exception classes
+
+
+class BedNotFound(Exception):
+
+    # Raised in DAO_Route.bed_nearest_node if bed doesn't exist
+    pass
+
+class PlaceNotFound(Exception):
+
+    # Raised in DAO_Route.place_nearest_node if place doesn't exist
+    pass

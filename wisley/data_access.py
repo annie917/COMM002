@@ -3,6 +3,8 @@ from wisley.models import GeoNode
 from wisley.models import Place
 from wisley.models import Plant
 from wisley.models import Stage
+from wisley.models import BedNotFound
+from wisley.models import PlaceNotFound
 
 import configparser
 
@@ -452,6 +454,11 @@ class DAO_Route(DAO_Location):
 
         row = self._execute_query(sql)
 
+        if not row:
+
+            #If place doesn't exist, raise custom exception
+            raise PlaceNotFound('Place ' + str(place_id) + ' not found')
+
         return ProjNode.from_db_row(row)
 
     def bed_nearest_node(self, bed_id):
@@ -469,6 +476,11 @@ class DAO_Route(DAO_Location):
               'WHERE f.id = ' + str(bed_id) + ';'
 
         row = self._execute_query(sql)
+
+        if not row:
+
+            #If place doesn't exist, raise custom exception
+            raise BedNotFound('Flower bed ' + str(bed_id) + ' not found')
 
         return ProjNode.from_db_row(row)
 
