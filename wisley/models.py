@@ -150,7 +150,7 @@ class Plant(object):
         # Instantiate an empty plant object
 
         self.name_num = ''
-        self.common_name = ''
+        self.preferred_common_name = ''
         self.pic = ''
         self.height = ''
         self.spread = ''
@@ -181,7 +181,7 @@ class Plant(object):
         self.pic = elem.attrib['PlantImagePath']
         self.height = elem.attrib['Height']
         self.hardiness = elem.attrib['Hardiness']
-        self.common_name = elem.attrib['PreferredCommonName']
+        self.preferred_common_name = elem.attrib['PreferredCommonName']
         self.spread = elem.attrib['Spread']
         self.time_to_full_height = elem.attrib['TimeToFullHeight']
         self.accepted_botanical_name = elem.attrib['AcceptedBotanicalName']
