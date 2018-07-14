@@ -1,4 +1,5 @@
-from flask import Flask, request, make_response
+from flask import request, make_response
+from wisley import app
 import jsonpickle
 from voluptuous import Schema, MultipleInvalid, Coerce, Required, All, Length, Range
 
@@ -9,11 +10,6 @@ from wisley.bus_layer import BLO_Route
 from wisley.models import GeoNode
 from wisley.models import BedNotFound
 from wisley.models import PlaceNotFound
-
-
-
-
-app = Flask(__name__)
 
 
 @app.route('/plants')

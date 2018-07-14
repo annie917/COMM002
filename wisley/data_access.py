@@ -18,7 +18,7 @@ class DAO_Plants(object):
 
         # Read in configuration file and set up xml file name
         config = configparser.ConfigParser()
-        config.read('config.ini')
+        config.read('./Common Files/config.ini')
         self.xml_file_name = config['XML']['file_path']
 
     def plant_attributes(self, name_num):
@@ -156,7 +156,7 @@ class DAO_Basics(object):
         # Read db details for configuration file and establish connection to database.
         # Set up location attribute
         config = configparser.ConfigParser()
-        config.read('config.ini')
+        config.read('./Common Files/config.ini')
 
         user = config['MySql']['user']
         host = config['MySql']['host']

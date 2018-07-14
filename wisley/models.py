@@ -45,7 +45,7 @@ class GeoNode(Node):
         import configparser
 
         config = configparser.ConfigParser()
-        config.read('config.ini')
+        config.read('./Common Files/config.ini')
         geo_string = config['Projections']['geographic']
         proj_string = config['Projections']['projected']
 
@@ -94,7 +94,7 @@ class ProjNode(Node):
         import configparser
 
         config = configparser.ConfigParser()
-        config.read('config.ini')
+        config.read('./Common Files/config.ini')
         geo_string = config['Projections']['geographic']
         proj_string = config['Projections']['projected']
 
